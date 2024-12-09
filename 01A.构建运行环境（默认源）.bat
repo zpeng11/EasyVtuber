@@ -21,6 +21,7 @@ call %~dp0envs\miniconda3\condabin\conda env list
 
 call %~dp0envs\miniconda3\condabin\conda update conda -y
 call %~dp0envs\miniconda3\condabin\conda install -y conda-forge::pycuda 
+call %~dp0envs\miniconda3\condabin\conda install -y nvidia/label/cuda-12.4.1::cuda-toolkit
 
 call %~dp0envs\miniconda3\python.exe -m pip install --upgrade pip wheel
 echo yes|%~dp0envs\miniconda3\python.exe -m pip install nvidia-cudnn-cu12
