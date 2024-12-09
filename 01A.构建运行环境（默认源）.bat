@@ -14,14 +14,18 @@ echo "Successfully install minconda"
 del envs\miniconda3.exe
 
 call %~dp0envs\miniconda3\Scripts\activate.bat %~dp0envs\miniconda3
-call %~dp0envs\miniconda3\condabin\conda activate base
+call %~dp0envs\miniconda3\condabin\conda update -y --all
+call %~dp0envs\miniconda3\condabin\conda create -y -n ezvtb_rt_venv python=3.10
+call %~dp0envs\miniconda3\condabin\conda activate ezvtb_rt_venv
+call %~dp0envs\miniconda3\condabin\conda env list
 
 call %~dp0envs\miniconda3\condabin\conda update conda -y
 call %~dp0envs\miniconda3\condabin\conda install -y conda-forge::pycuda 
 
-echo yes|%~dp0envs\miniconda3\python.exe -m pip install --upgrade pip wheel
+call %~dp0envs\miniconda3\python.exe -m pip install --upgrade pip wheel
 echo yes|%~dp0envs\miniconda3\python.exe -m pip install nvidia-cudnn-cu12
 
-echo yes|%~dp0envs\miniconda3\Scripts\pip.exe onnx onnxruntime-directml turbojpeg tqdm opencv-python
 echo yes|%~dp0envs\miniconda3\Scripts\pip.exe install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
+
+call %~dp0envs\miniconda3\python.exe -m pip install -r requirements.txt --no-warn-script-location
 pause
