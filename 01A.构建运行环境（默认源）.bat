@@ -1,21 +1,28 @@
 @echo on
 cd /D "%~dp0"
-if not exist "envs" mkdir envs
-if not exist "envs\miniconda3" mkdir envs\miniconda3
 
-echo "Downloading miniconda..."
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://repo.anaconda.com/miniconda/Miniconda3-py310_24.9.2-0-Windows-x86_64.exe', '.\envs\miniconda3.exe')"
+WHERE conda
+IF %ERRORLEVEL% NEQ 0 (
+    if not exist "envs" mkdir envs
+    if not exist "envs\miniconda3" mkdir envs\miniconda3
 
-echo "Please ensure you did not install miniconda for current user, if so this will fail silencely, you will need to remove miniconda from you windows user folder to make this work again"
-echo "Installling minconda..."
-start /wait "" %~dp0envs\miniconda3.exe /S /AddToPath=0 /RegisterPython=0 /InstallationType=JustMe /D=%~dp0envs\miniconda3
-echo "Successfully install minconda"
+    IF not EXIST %~dp0envs\miniconda3\Scripts (
+        @RD /S /Q %~dp0envs\miniconda3
+        mkdir %~dp0envs\miniconda3
+        echo "Downloading miniconda..."
+        powershell -Command "(New-Object Net.WebClient).DownloadFile('https://repo.anaconda.com/miniconda/Miniconda3-py310_24.9.2-0-Windows-x86_64.exe', '.\envs\miniconda3.exe')"
 
-del envs\miniconda3.exe
+        echo "Installling minconda..."
+        start /wait "" %~dp0envs\miniconda3.exe /S /AddToPath=0 /RegisterPython=0 /InstallationType=JustMe /D=%~dp0envs\miniconda3
+        echo "Successfully install minconda"
+        del envs\miniconda3.exe
+    )
+)
 
 IF EXIST %~dp0envs\miniconda3\Scripts SET PATH=%~dp0envs\miniconda3\Scripts;%PATH%
 
 call activate
+call conda env list
 call conda update -y --all
 call conda create -y -n ezvtb_rt_venv python=3.10
 call conda activate ezvtb_rt_venv
