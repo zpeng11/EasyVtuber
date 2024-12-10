@@ -30,7 +30,7 @@ else:
 if project_path not in sys.path:
     sys.path.append(project_path)
 
-from ezvtb_rt.trt_utils import check_build_all_models,cudaSetDevice
+
 
 def get_core(
         #Device setting
@@ -52,12 +52,25 @@ def get_core(
         cacher_quality:int = 95,
         cacher_ram_size:int = 2,
         ):
-    support_trt = check_build_all_models()
+    if use_tensorrt:
+        try:
+            from ezvtb_rt.trt_utils import cudaSetDevice,check_build_all_models
+            cudaSetDevice(device_id)
+            support_trt = check_build_all_models()
+        except:
+            support_trt = False
     if support_trt == False and use_tensorrt == True:
         print('TensorRT option selected but not supported')
         use_tensorrt = False
-    if use_tensorrt and device_id != 0:
-        cudaSetDevice(device_id)
+    if use_tensorrt:
+        os.environ['CUDA_DEVICE'] = str(device_id)
+        import pycuda.autoinit
+        print(f'Using devcie {pycuda.autoinit.device.name()}')
+    tha_model_path = os.path.join(project_path, 'tha3', 'seperable' if seperable_model else 'standard', )
     
 
-get_core()
+
+
+
+import pycuda.autoinit
+print( pycuda.autoinit.device.name())
