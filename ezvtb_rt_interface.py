@@ -33,6 +33,10 @@ if project_path not in sys.path:
 
 from ezvtb_rt.trt_utils import check_build_all_models
 
-def get_rt_core():
-    check_build_all_models()
+def get_core(
+        device_id:int = 0, 
+        use_tensorrt:bool = True, 
+
+        ):
+    support_trt = check_build_all_models()
 get_rt_core()
