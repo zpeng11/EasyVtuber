@@ -11,8 +11,7 @@ if not os.path.exists(ezvtb_path) and not os.path.exists(ezvtb_main_path): #Chec
     print('Trying to clone ezvtb_rt')
     try:
         subprocess.run(['git', 'submodule','init'], check=True, capture_output=True)
-        subprocess.run(['git', 'submodule','update'], check=True, capture_output=True)
-        subprocess.run(['git', 'checkout','main'], check=True, capture_output=True)
+        subprocess.run(['git', 'submodule','update', '--recursive', '--remote'], check=True, capture_output=True)
     except:
         print('Git submodule init update failed, try to download from github')
         zip_path = 'https://github.com/zpeng11/ezvtuber-rt/archive/refs/heads/main.zip'
@@ -31,12 +30,34 @@ else:
 if project_path not in sys.path:
     sys.path.append(project_path)
 
-from ezvtb_rt.trt_utils import check_build_all_models
+from ezvtb_rt.trt_utils import check_build_all_models,cudaSetDevice
 
 def get_core(
+        #Device setting
         device_id:int = 0, 
         use_tensorrt:bool = True, 
-
+        #THA3 model setting
+        seperable_model:bool = True,
+        model_half:bool = True,
+        model_cache:bool = True,
+        model_vram_cache:bool = False,
+        model_cache_size:int = 1,
+        #RIFE interpolation setting
+        use_interpolation:bool = True,
+        interpolation_scale:int = 2,
+        interpolation_half:bool = True,
+        #Cacher setting
+        use_cacher:bool = True,
+        cacher_on_database:bool = True,
+        cacher_quality:int = 95,
+        cacher_ram_size:int = 2,
         ):
     support_trt = check_build_all_models()
-get_rt_core()
+    if support_trt == False and use_tensorrt == True:
+        print('TensorRT option selected but not supported')
+        use_tensorrt = False
+    if use_tensorrt and device_id != 0:
+        cudaSetDevice(device_id)
+    
+
+get_core()
