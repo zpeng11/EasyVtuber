@@ -1,3 +1,4 @@
 [submodule "ezvtuber-rt"]
 	path = ezvtuber-rt
 	url = https://github.com/zpeng11/ezvtuber-rt.git
+	branch = main
