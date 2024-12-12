@@ -133,14 +133,14 @@ def launch():
             run_args.append(['0b', '256mb', '1gb', '2gb', '4gb', '8gb'][args['cache_size']])
             run_args.append('--gpu_cache')
             run_args.append(['0b', '128mb', '512mb', '1gb', '2gb', '4gb'][args['cache_size']])
-        if args['model_type'] is not None:
-            run_args.append('--model')
-            model_name = ['standard_float', 'standard_half', 'separable_half'][args['model_type']]
-            run_args.append(model_name)
-            if not os.path.exists('data/models/' + model_name + '/face_morpher.pt'):
-                tkinter.messagebox.showinfo('EasyVtuber Launcher',
-                                            'Missing Model File: ' + 'data/models/' + model_name + '\nCheck link 00B or README.md for more info.')
-                return
+        # if args['model_type'] is not None:
+        #     run_args.append('--model')
+        #     model_name = ['standard_float', 'standard_half', 'separable_half'][args['model_type']]
+        #     run_args.append(model_name)
+        #     if not os.path.exists('data/models/' + model_name + '/face_morpher.pt'):
+        #         tkinter.messagebox.showinfo('EasyVtuber Launcher',
+        #                                     'Missing Model File: ' + 'data/models/' + model_name + '\nCheck link 00B or README.md for more info.')
+        #         return
 
         run_args.append('--output_size')
         run_args.append('512x512')

@@ -323,8 +323,7 @@ class ModelClientProcess(Process):
         self.should_terminate = Value('b', False)
         self.updated = Value('b', False)
         self.data = None
-        self.model = get_core(use_interpolation=False)
-        self.model.setImage(input_image)
+        self.input_image = input_image
         self.output_queue = Queue()
         self.input_queue = Queue()
         self.model_fps_number = Value('f', 0.0)
@@ -333,6 +332,8 @@ class ModelClientProcess(Process):
         self.gpu_cache_hit_ratio = Value('f', 0.0)
 
     def run(self):
+        self.model = get_core(use_interpolation=False, cacher_on_database=True,model_half=False)
+        self.model.setImage(self.input_image)
         input_pose = np.zeros((1,45), dtype=np.float32)
 
         model_fps = FPS()
@@ -477,7 +478,7 @@ class ModelClientProcess(Process):
 @torch.no_grad()
 def main():
     img = Image.open(f"data/images/{args.character}.png")
-    img = img.convert('BGRA')
+    img = img.convert('RGBA')
     IMG_WIDTH = 512
     wRatio = img.size[0] / IMG_WIDTH
     img = img.resize((IMG_WIDTH, int(img.size[1] / wRatio)))
@@ -487,6 +488,7 @@ def main():
             x = i % IMG_WIDTH
             img.putpixel((x, y), (0, 0, 0, 0))
     input_image = np.array(img.crop((0, 0, IMG_WIDTH, IMG_WIDTH)))
+    input_image = cv2.cvtColor(input_image, cv2.COLOR_RGBA2BGRA)
     extra_image = None
     if img.size[1] > IMG_WIDTH:
         extra_image = np.array(img.crop((0, IMG_WIDTH, img.size[0], img.size[1])))
@@ -586,7 +588,7 @@ def main():
 
     model_output = None
     model_process = ModelClientProcess(input_image)
-    model_process.daemon = True
+    # model_process.daemon = True
     model_process.start()
 
     print("Ready. Close this console to exit.")
@@ -862,24 +864,23 @@ def main():
 
             # a.load_image_from_numpy(cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2RGB), input_type=ac.AC_INPUT_RGB)
             # img = cv2.imread("character/test41.png")
-            img1 = cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2BGR)
+            img1 = cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2BGR)
             # a.load_image_from_numpy(img, input_type=ac.AC_INPUT_BGR)
             a.load_image_from_numpy(img1, input_type=ac.AC_INPUT_BGR)
             a.process()
             postprocessed_image = a.save_image_to_numpy()
             postprocessed_image = cv2.merge((postprocessed_image, alpha_channel))
-            postprocessed_image = cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2RGBA)
             if args.perf == 'main':
                 print("anime4k", (time.perf_counter() - tic) * 1000)
                 tic = time.perf_counter()
         if args.alpha_split:
             alpha_image = cv2.merge(
                 [postprocessed_image[:, :, 3], postprocessed_image[:, :, 3], postprocessed_image[:, :, 3]])
-            alpha_image = cv2.cvtColor(alpha_image, cv2.COLOR_RGB2RGBA)
+            alpha_image = cv2.cvtColor(alpha_image, cv2.COLOR_BGR2BGRA)
             postprocessed_image = cv2.hconcat([postprocessed_image, alpha_image])
 
         if args.debug:
-            output_frame = cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2BGRA)
+            output_frame = postprocessed_image
             # resized_frame = cv2.resize(output_frame, (np.min(debug_image.shape[:2]), np.min(debug_image.shape[:2])))
             # output_frame = np.concatenate([debug_image, resized_frame], axis=1)
             cv2.putText(output_frame, str('OUT_FPS:%.1f' % output_fps_number), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
@@ -914,7 +915,7 @@ def main():
             #     cv2.cvtColor(postprocessing_image(output_image.cpu()), cv2.COLOR_RGBA2RGB), (512, 512))
             result_image = postprocessed_image
             if args.output_webcam == 'obs':
-                result_image = cv2.cvtColor(result_image, cv2.COLOR_RGBA2RGB)
+                result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2RGB)
             cam.send(result_image)
             cam.sleep_until_next_frame()
         if args.perf == 'main':
