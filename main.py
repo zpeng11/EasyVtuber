@@ -11,6 +11,7 @@ import tha2.poser.modes.mode_20_wx
 from models import TalkingAnimeLight, TalkingAnime3
 from pose import get_pose
 from utils import preprocessing_image, postprocessing_image
+from ezvtb_rt_interface import get_core
 
 import errno
 import json
@@ -322,7 +323,8 @@ class ModelClientProcess(Process):
         self.should_terminate = Value('b', False)
         self.updated = Value('b', False)
         self.data = None
-        self.input_image = input_image
+        self.model = get_core(use_interpolation=False)
+        self.model.setImage(input_image)
         self.output_queue = Queue()
         self.input_queue = Queue()
         self.model_fps_number = Value('f', 0.0)
@@ -331,26 +333,8 @@ class ModelClientProcess(Process):
         self.gpu_cache_hit_ratio = Value('f', 0.0)
 
     def run(self):
-        model = None
-        if not args.skip_model:
-            model = TalkingAnime3().to(device)
-            model = model.eval()
-            model = model
-            print("Pretrained Model Loaded")
+        input_pose = np.zeros((1,45), dtype=np.float32)
 
-        eyebrow_vector = torch.empty(1, 12, dtype=torch.half if args.model.endswith('half') else torch.float)
-        mouth_eye_vector = torch.empty(1, 27, dtype=torch.half if args.model.endswith('half') else torch.float)
-        pose_vector = torch.empty(1, 6, dtype=torch.half if args.model.endswith('half') else torch.float)
-
-        input_image = self.input_image.to(device)
-        eyebrow_vector = eyebrow_vector.to(device)
-        mouth_eye_vector = mouth_eye_vector.to(device)
-        pose_vector = pose_vector.to(device)
-
-        model_cache = OrderedDict()
-        tot = 0
-        hit = 0
-        hit_in_a_row = 0
         model_fps = FPS()
         gpu_fps = FPS()
         while True:
@@ -465,68 +449,35 @@ class ModelClientProcess(Process):
             for i in range(0, len(simplify_arr)):
                 if simplify_arr[i] > 0:
                     model_input[i] = round(model_input[i] * simplify_arr[i]) / simplify_arr[i]
-            input_hash = hash(tuple(model_input))
-            cached = model_cache.get(input_hash)
-            tot += 1
-            eyebrow_vector_c = [0.0] * 12
-            mouth_eye_vector_c = [0.0] * 27
-            if cached is not None and hit_in_a_row < self.model_fps_number.value:
-                self.output_queue.put_nowait(cached)
-                model_cache.move_to_end(input_hash)
-                hit += 1
-                hit_in_a_row += 1
-            else:
-                hit_in_a_row = 0
-                if args.perf == 'model':
-                    tic = time.perf_counter()
-                if args.eyebrow:
-                    for i in range(12):
-                        eyebrow_vector[0, i] = model_input[i]
-                        eyebrow_vector_c[i] = model_input[i]
-                for i in range(27):
-                    mouth_eye_vector[0, i] = model_input[i + 12]
-                    mouth_eye_vector_c[i] = model_input[i + 12]
-                for i in range(6):
-                    pose_vector[0, i] = model_input[i + 27 + 12]
-                if model is None:
-                    output_image = input_image
-                else:
-                    output_image = model(input_image, mouth_eye_vector, pose_vector, eyebrow_vector, mouth_eye_vector_c,
-                                         eyebrow_vector_c,
-                                         self.gpu_cache_hit_ratio)
-                if args.perf == 'model':
-                    torch.cuda.synchronize()
-                    print("model", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
-                postprocessed_image = output_image[0].float()
-                if args.perf == 'model':
-                    print("cpu()", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
-                postprocessed_image = convert_linear_to_srgb((postprocessed_image + 1.0) / 2.0)
-                c, h, w = postprocessed_image.shape
-                postprocessed_image = 255.0 * torch.transpose(postprocessed_image.reshape(c, h * w), 0, 1).reshape(h, w,
-                                                                                                                   c)
-                postprocessed_image = postprocessed_image.byte().detach().cpu().numpy()
-                if args.perf == 'model':
-                    print("postprocess", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
 
-                self.output_queue.put_nowait(postprocessed_image)
-                if args.debug:
-                    self.gpu_fps_number.value = gpu_fps()
-                if args.max_cache_len > 0:
-                    model_cache[input_hash] = postprocessed_image
-                    if len(model_cache) > args.max_cache_len:
-                        model_cache.popitem(last=False)
+            if args.perf == 'model':
+                tic = time.perf_counter()
+            if args.eyebrow:
+                for i in range(12):
+                    input_pose[0, i] = model_input[i]
+            for i in range(27):
+                input_pose[0, i + 12] = model_input[i + 12]
+            for i in range(6):
+                input_pose[0, i + 12 + 27] = model_input[i + 27 + 12]
+
+            output_image = self.model.inference(input_pose)[0]
+            
+            if args.perf == 'model':
+                print("postprocess", (time.perf_counter() - tic) * 1000)
+                tic = time.perf_counter()
+
+            self.output_queue.put_nowait(output_image)
             if args.debug:
-                self.model_fps_number.value = model_fps()
-                self.cache_hit_ratio.value = hit / tot
+                self.gpu_fps_number.value = gpu_fps()
+        if args.debug:
+            self.model_fps_number.value = model_fps()
+            self.cache_hit_ratio.value = self.model.cacher.hits / self.model.cacher.hits + self.model.cacher.miss
 
 
 @torch.no_grad()
 def main():
     img = Image.open(f"data/images/{args.character}.png")
-    img = img.convert('RGBA')
+    img = img.convert('BGRA')
     IMG_WIDTH = 512
     wRatio = img.size[0] / IMG_WIDTH
     img = img.resize((IMG_WIDTH, int(img.size[1] / wRatio)))
@@ -535,12 +486,7 @@ def main():
             y = i // IMG_WIDTH
             x = i % IMG_WIDTH
             img.putpixel((x, y), (0, 0, 0, 0))
-    input_image = preprocessing_image(img.crop((0, 0, IMG_WIDTH, IMG_WIDTH)))
-    if args.model.endswith('half'):
-        input_image = torch.from_numpy(input_image).half() * 2.0 - 1
-    else:
-        input_image = torch.from_numpy(input_image).float() * 2.0 - 1
-    input_image = input_image.unsqueeze(0)
+    input_image = np.array(img.crop((0, 0, IMG_WIDTH, IMG_WIDTH)))
     extra_image = None
     if img.size[1] > IMG_WIDTH:
         extra_image = np.array(img.crop((0, IMG_WIDTH, img.size[0], img.size[1])))
@@ -596,7 +542,7 @@ def main():
                                   fps=60,
                                   backend=args.output_webcam,
                                   fmt=
-                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
+                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.BGR}[
                                       args.output_webcam])
         print(f'Using virtual camera: {cam.device}')
 
