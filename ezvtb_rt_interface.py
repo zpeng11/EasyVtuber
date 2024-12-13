@@ -37,7 +37,7 @@ def get_core(
         device_id:int = 0, 
         use_tensorrt:bool = True, 
         #THA3 model setting
-        seperable_model:bool = True,
+        model_seperable:bool = True,
         model_half:bool = True, #If using directml+half, there is small numerical error on Nvidia, and huge numerical error on AMD
         model_cache:bool = True,#Only works for tensorrt
         model_vram_cache:bool = True, #Only works for tensorrt
@@ -76,7 +76,7 @@ def get_core(
         print(f'Using devcie {pycuda.autoinit.device.name()}')
 
     tha_model_dir = os.path.join(project_path,'data', 'tha3',
-                                 'seperable' if seperable_model else 'standard', 
+                                 'seperable' if model_seperable else 'standard', 
                                  'fp16' if model_half else 'fp32')
     rife_model_path = ''
     if use_interpolation:
