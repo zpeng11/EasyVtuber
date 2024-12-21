@@ -30,6 +30,10 @@ else:
 if project_path not in sys.path:
     sys.path.append(project_path)
 
+if not os.path.exists(os.path.join(project_path, 'data', 'tha3')):
+    from ezvtb_rt.init_utils import check_exist_all_models
+    print('Checking and downloading pretrained models')
+    check_exist_all_models()
 
 
 def get_core(
@@ -48,8 +52,8 @@ def get_core(
         interpolation_half:bool = True, #If using directml+half, there is small numerical error on Nvidia, and huge numerical error on AMD
         #Cacher setting
         use_cacher:bool = True,
-        cacher_on_database:bool = True,
-        cacher_quality:int = 95,
+        cacher_on_database:bool = False,
+        cacher_quality:int = 85,
         cacher_ram_size:int = 2,#unit of GigaBytes
         cacher_db_path:str = './cacher.sqlite' #Ensure the db works on Solid State Drive, HHD's lag does not meet requirement
         ):
@@ -66,11 +70,7 @@ def get_core(
         print('TensorRT option selected but not supported')
         use_tensorrt = False
 
-    if not use_tensorrt:#Verify for directml
-        print('Verifying DirectML')
-        from ezvtb_rt.init_utils import check_exist_all_models
-        check_exist_all_models()
-    else:
+    if use_tensorrt:
         os.environ['CUDA_DEVICE'] = str(device_id)
         import pycuda.autoinit
         print(f'Using devcie {pycuda.autoinit.device.name()}')
@@ -80,7 +80,7 @@ def get_core(
                                  'fp16' if model_half else 'fp32')
     rife_model_path = ''
     if use_interpolation:
-        rife_model_path = os.path.join(project_path,'data', 'rife_lite_v4_25',
+        rife_model_path = os.path.join(project_path,'data', 'rife_512',
                                        f'x{interpolation_scale}', 'fp16' if interpolation_half else 'fp32')
     print(f'THA3 Path:{tha_model_dir}')
     print(f'RIFE Path:{rife_model_path}')
