@@ -77,11 +77,11 @@ core = get_core(
         interpolation_half = True,
         cacher_ram_size = 8
         )
-img = cv2.imread('img1.png', cv2.IMREAD_UNCHANGED)
+img = cv2.imread('img1.png', cv2.IMREAD_UNCHANGED) 
 core.setImage(img)
 while True: #Eventloop here
     pose_param = pipe.get(blocking=True)
     ret = core.inference(pose_param)
     for ret_img in ret:
-        cv2.imwrite('result.png',ret_img) #Write to file just for example
+        cv2.imwrite('result.png',ret_img) #imwrite just for example
 ```
