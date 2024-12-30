@@ -368,6 +368,8 @@ class ModelClientProcess(Process):
         self.shared_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
 
         model_fps = FPS()
+
+        last_process_time = time.time()
         while True:
             model_input = None
             try:
@@ -376,6 +378,10 @@ class ModelClientProcess(Process):
             except queue.Empty:
                 continue
             if model_input is None: continue
+            frame_interval = (1 / args.frame_rate_limit) if not args.use_interpolation else (1 / args.frame_rate_limit * args.interpolation_scale)
+            now = time.time()
+            if now < frame_interval + last_process_time - 0.005: continue #
+            last_process_time = now
             simplify_arr = [1000] * ifm_converter.pose_size
             if args.simplify >= 1:
                 simplify_arr = [200] * ifm_converter.pose_size
@@ -626,7 +632,7 @@ def main():
     model_process.start()
     model_output_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
     model_result_read_ptr = 0
-    model_return_fps = FPS()
+    model_return_fps = FPS(5)
     need_a_copy = True
 
     print("Ready. Close this console to exit.")

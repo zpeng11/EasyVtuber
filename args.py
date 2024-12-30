@@ -54,6 +54,9 @@ parser.add_argument('--use_sr', type=bool, default=False)
 parser.add_argument('--sr_x4', type=bool, default=True)
 parser.add_argument('--sr_half', type=bool, default=True)
 parser.add_argument('--sr_noise', type=int, default=1)
+
+parser.add_argument('--frame_rate_limit', type=int, default=30)
+
 args = parser.parse_args()
 args.output_w = int(args.output_size.split('x')[0])
 args.output_h = int(args.output_size.split('x')[1])
@@ -69,11 +72,12 @@ if args.output_webcam is None and args.output_dir is None: args.debug = True
 
 
 
-args.device_id = 2
+args.device_id = 1
 args.use_tensorrt = False
 args.use_interpolation = True
 args.interpolation_scale = 4
-args.use_cacher = False
+args.use_cacher = True
 args.model_half = False
+
 
 args.model_output_size = 1024 if args.use_sr else 512
