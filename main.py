@@ -373,6 +373,7 @@ class ModelClientProcess(Process):
         while True:
             model_input = None
             try:
+                model_input = self.input_queue.get(block=True, timeout=1.0) # Save cpu from infinite loop
                 while not self.input_queue.empty():
                     model_input = self.input_queue.get_nowait()
             except queue.Empty:
