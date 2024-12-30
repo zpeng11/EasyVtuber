@@ -51,7 +51,7 @@ class FPS:
         
     def view(self):
         if len(self.frametimestamps) > 1:
-            return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0])
+            return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0] + 1e-10)
         else:
             return 0.0
 
