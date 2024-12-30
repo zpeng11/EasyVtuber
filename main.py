@@ -8,7 +8,6 @@ import mediapipe as mp
 from PIL import Image
 
 import tha2.poser.modes.mode_20_wx
-from models import TalkingAnimeLight, TalkingAnime3
 from pose import get_pose
 from utils import preprocessing_image, postprocessing_image
 from ezvtb_rt_interface import get_core
@@ -23,7 +22,7 @@ import math
 from pynput.mouse import Button, Controller
 import re
 from collections import OrderedDict
-from multiprocessing import Value, Process, Queue
+from multiprocessing import Value, Process, Queue, shared_memory
 
 from pyanime4k import ac
 
@@ -54,7 +53,7 @@ class FPS:
             return 0.0
 
 
-device = torch.device('cuda') if torch.cuda.is_available() and not args.skip_model else torch.device('cpu')
+device = torch.device('cpu')
 
 
 def create_default_blender_data():
@@ -326,18 +325,40 @@ class ModelClientProcess(Process):
         self.input_image = input_image
         self.output_queue = Queue()
         self.input_queue = Queue()
+        self.shms = [shared_memory.SharedMemory(create=True, size=512 * 512 * 4) for _ in range(1)]
         self.model_fps_number = Value('f', 0.0)
         self.gpu_fps_number = Value('f', 0.0)
         self.cache_hit_ratio = Value('f', 0.0)
         self.gpu_cache_hit_ratio = Value('f', 0.0)
 
     def run(self):
-        self.model = get_core(use_interpolation=False, cacher_on_database=True,model_half=False)
+        self.model = get_core(device_id = args.device_id,
+                              use_tensorrt = args.use_tensorrt,
+
+                              model_seperable = args.model_seperable,
+                              model_half=args.model_half, 
+                              model_cache=args.model_cache, 
+                              model_vram_cache=args.model_vram_cache,
+                              model_cache_size=args.max_gpu_cache_len, 
+
+                              use_interpolation=args.use_interpolation,
+                              interpolation_scale=args.interpolation_scale,
+                              interpolation_half=args.interpolation_half,
+
+                              use_cacher=args.use_cacher, 
+                              cacher_quality=args.cacher_quality,
+                              cacher_ram_size=args.max_cache_len, 
+
+                              use_sr = args.use_sr, 
+                              sr_half= args.sr_half, 
+                              sr_x4=args.sr_x4,
+                              sr_noise=args.sr_noise)
         self.model.setImage(self.input_image)
         input_pose = np.zeros((1,45), dtype=np.float32)
 
+        self.shared_nps = [np.ndarray((512, 512, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
+
         model_fps = FPS()
-        gpu_fps = FPS()
         while True:
             model_input = None
             try:
@@ -461,18 +482,22 @@ class ModelClientProcess(Process):
             for i in range(6):
                 input_pose[0, i + 12 + 27] = model_input[i + 27 + 12]
 
-            output_image = self.model.inference(input_pose)[0]
+            output_images = self.model.inference(input_pose)
             
             if args.perf == 'model':
                 print("postprocess", (time.perf_counter() - tic) * 1000)
                 tic = time.perf_counter()
 
-            self.output_queue.put_nowait(output_image)
+            for i in range(len(self.shared_nps)):
+                np.copyto(self.shared_nps[i], output_images[i])
+            self.output_queue.put_nowait(True)
+
             if args.debug:
-                self.gpu_fps_number.value = gpu_fps()
-        if args.debug:
-            self.model_fps_number.value = model_fps()
-            self.cache_hit_ratio.value = self.model.cacher.hits / self.model.cacher.hits + self.model.cacher.miss
+                self.model_fps_number.value = model_fps()
+                if self.model.cacher is not None:
+                    self.cache_hit_ratio.value = self.model.cacher.hits / (self.model.cacher.hits + self.model.cacher.miss + 1)
+                if args.use_tensorrt and args.model_cache and args.model_vram_cache:
+                    self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
 
 
 @torch.no_grad()
@@ -544,7 +569,7 @@ def main():
                                   fps=60,
                                   backend=args.output_webcam,
                                   fmt=
-                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.BGR}[
+                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
                                       args.output_webcam])
         print(f'Using virtual camera: {cam.device}')
 
@@ -588,8 +613,9 @@ def main():
 
     model_output = None
     model_process = ModelClientProcess(input_image)
-    # model_process.daemon = True
+    model_process.daemon = True
     model_process.start()
+    model_output_nps = [np.ndarray((512, 512, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
 
     print("Ready. Close this console to exit.")
 
@@ -811,7 +837,7 @@ def main():
             while not model_process.output_queue.empty():
                 has_model_output += 1
                 new_model_output = model_process.output_queue.get_nowait()
-            model_output = new_model_output
+            model_output = model_output_nps[0].copy()
         except queue.Empty:
             pass
         if model_output is None:
@@ -843,6 +869,11 @@ def main():
             dy = -position_vector[1] * 600 * k_scale * args.extend_movement
         if args.bongo:
             rotate_angle -= 5
+        
+        new_size = postprocessed_image.shape[0]
+        IMG_WIDTH = new_size
+        args.output_w = new_size
+        args.output_h = new_size
         rm = cv2.getRotationMatrix2D((IMG_WIDTH / 2, IMG_WIDTH / 2), rotate_angle, k_scale)
         rm[0, 2] += dx + args.output_w / 2 - IMG_WIDTH / 2
         rm[1, 2] += dy + args.output_h / 2 - IMG_WIDTH / 2
@@ -885,16 +916,10 @@ def main():
             # output_frame = np.concatenate([debug_image, resized_frame], axis=1)
             cv2.putText(output_frame, str('OUT_FPS:%.1f' % output_fps_number), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
                         (0, 255, 0), 1)
-            if args.max_cache_len > 0:
-                cv2.putText(output_frame, str(
-                    'GPU_FPS:%.1f / %.1f' % (model_process.model_fps_number.value, model_process.gpu_fps_number.value)),
-                            (0, 32),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-            else:
-                cv2.putText(output_frame, str(
-                    'GPU_FPS:%.1f' % (model_process.model_fps_number.value)),
-                            (0, 32),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+            cv2.putText(output_frame, str(
+                'GPU_FPS:%.1f' % (model_process.model_fps_number.value)),
+                        (0, 32),
+                        cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
             if args.ifm is not None:
                 cv2.putText(output_frame, str('IFM_FPS:%.1f' % client_process.ifm_fps_number.value), (0, 48),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
@@ -902,7 +927,7 @@ def main():
                 cv2.putText(output_frame, str('MEMCACHED:%.1f%%' % (model_process.cache_hit_ratio.value * 100)),
                             (0, 64),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-            if args.max_gpu_cache_len > 0:
+            if args.max_gpu_cache_len > 0.0:
                 cv2.putText(output_frame, str('GPUCACHED:%.1f%%' % (model_process.gpu_cache_hit_ratio.value * 100)),
                             (0, 80),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
