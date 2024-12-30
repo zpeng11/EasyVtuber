@@ -43,7 +43,7 @@ parser.add_argument('--model_vram_cache', type=bool, default=True)
 # parser.add_argument('--model_cache_size', type=float, default=1.0)
 
 parser.add_argument('--use_interpolation', type=bool, default=False)
-parser.add_argument('--interpolation_scale', type=int, default=2)
+parser.add_argument('--interpolation_scale', type=int, default=3)
 parser.add_argument('--interpolation_half', type=bool, default=True)
 
 parser.add_argument('--use_cacher', type=bool, default=True)
@@ -68,5 +68,12 @@ else:
 if args.output_webcam is None and args.output_dir is None: args.debug = True
 
 
-args.device_id = 1
+
+args.device_id = 2
 args.use_tensorrt = False
+args.use_interpolation = True
+args.interpolation_scale = 4
+args.use_cacher = False
+args.model_half = False
+
+args.model_output_size = 1024 if args.use_sr else 512

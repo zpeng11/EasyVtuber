@@ -325,7 +325,7 @@ class ModelClientProcess(Process):
         self.input_image = input_image
         self.output_queue = Queue()
         self.input_queue = Queue()
-        self.shms = [shared_memory.SharedMemory(create=True, size=512 * 512 * 4) for _ in range(1)]
+        self.shms = [shared_memory.SharedMemory(create=True, size=args.model_output_size * args.model_output_size * 4) for _ in range(args.interpolation_scale if args.use_interpolation else 1)]
         self.model_fps_number = Value('f', 0.0)
         self.gpu_fps_number = Value('f', 0.0)
         self.cache_hit_ratio = Value('f', 0.0)
@@ -356,7 +356,7 @@ class ModelClientProcess(Process):
         self.model.setImage(self.input_image)
         input_pose = np.zeros((1,45), dtype=np.float32)
 
-        self.shared_nps = [np.ndarray((512, 512, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
+        self.shared_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
 
         model_fps = FPS()
         while True:
@@ -615,7 +615,8 @@ def main():
     model_process = ModelClientProcess(input_image)
     model_process.daemon = True
     model_process.start()
-    model_output_nps = [np.ndarray((512, 512, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
+    model_output_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
+    model_result_read_ptr = 0
 
     print("Ready. Close this console to exit.")
 
@@ -831,23 +832,19 @@ def main():
 
         model_process.input_queue.put_nowait(model_input_arr)
 
-        has_model_output = 0
+
         try:
-            new_model_output = model_output
             while not model_process.output_queue.empty():
-                has_model_output += 1
-                new_model_output = model_process.output_queue.get_nowait()
-            model_output = model_output_nps[0].copy()
+                model_process.output_queue.get_nowait()
+                model_result_read_ptr = 0
+            model_output = model_output_nps[model_result_read_ptr].copy()
+            if model_result_read_ptr + 1 < len(model_output_nps):
+                model_result_read_ptr += 1
         except queue.Empty:
             pass
         if model_output is None:
             time.sleep(1)
             continue
-        # print(has_model_output)
-        # should_output=should_output or has_model_output
-        # if not should_output:
-        #     continue
-
         postprocessed_image = model_output
 
         if args.perf == 'main':
@@ -870,18 +867,14 @@ def main():
         if args.bongo:
             rotate_angle -= 5
         
-        new_size = postprocessed_image.shape[0]
-        IMG_WIDTH = new_size
-        args.output_w = new_size
-        args.output_h = new_size
-        rm = cv2.getRotationMatrix2D((IMG_WIDTH / 2, IMG_WIDTH / 2), rotate_angle, k_scale)
-        rm[0, 2] += dx + args.output_w / 2 - IMG_WIDTH / 2
-        rm[1, 2] += dy + args.output_h / 2 - IMG_WIDTH / 2
+        rm = cv2.getRotationMatrix2D((args.model_output_size / 2, args.model_output_size / 2), rotate_angle, k_scale)
+        rm[0, 2] += dx + args.output_w / 2 - args.model_output_size / 2
+        rm[1, 2] += dy + args.output_h / 2 - args.model_output_size / 2
 
         postprocessed_image = cv2.warpAffine(
             postprocessed_image,
             rm,
-            (args.output_w, args.output_h))
+            (args.model_output_size, args.model_output_size))
 
         if args.perf == 'main':
             print("extendmovement", (time.perf_counter() - tic) * 1000)
