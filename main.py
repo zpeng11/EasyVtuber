@@ -47,10 +47,19 @@ class FPS:
 
     def __call__(self):
         self.frametimestamps.append(time.time())
+        return self.view()
+        
+    def view(self):
         if len(self.frametimestamps) > 1:
             return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0])
         else:
             return 0.0
+
+    def last(self):
+        if len(self.frametimestamps):
+            return self.frametimestamps[-1]
+        else:
+            return time.time()
 
 
 device = torch.device('cpu')
@@ -617,6 +626,8 @@ def main():
     model_process.start()
     model_output_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
     model_result_read_ptr = 0
+    model_return_fps = FPS()
+    need_a_copy = True
 
     print("Ready. Close this console to exit.")
 
@@ -837,16 +848,21 @@ def main():
             while not model_process.output_queue.empty():
                 model_process.output_queue.get_nowait()
                 model_result_read_ptr = 0
-            model_output = model_output_nps[model_result_read_ptr].copy()
-            if model_result_read_ptr + 1 < len(model_output_nps):
+                model_return_fps()
+                need_a_copy = True
+            if need_a_copy:
+                model_output = model_output_nps[model_result_read_ptr].copy()
+                need_a_copy = False
+            interval = 1 / (model_return_fps.view()+ 1e-10) / len(model_output_nps) * 0.8
+            if model_result_read_ptr + 1 < len(model_output_nps) and time.time() >= ((model_result_read_ptr + 1) * interval + model_return_fps.last()):
                 model_result_read_ptr += 1
+                need_a_copy = True
         except queue.Empty:
             pass
         if model_output is None:
             time.sleep(1)
             continue
-        postprocessed_image = model_output
-
+        postprocessed_image = model_output.copy()
         if args.perf == 'main':
             print('===')
             print("input", time.perf_counter() - tic)
@@ -910,7 +926,7 @@ def main():
             cv2.putText(output_frame, str('OUT_FPS:%.1f' % output_fps_number), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
                         (0, 255, 0), 1)
             cv2.putText(output_frame, str(
-                'GPU_FPS:%.1f' % (model_process.model_fps_number.value)),
+                'GPU_FPS:%.1f' % (model_process.model_fps_number.value if not args.use_interpolation else model_process.model_fps_number.value * args.interpolation_scale)),
                         (0, 32),
                         cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
             if args.ifm is not None:
