@@ -512,8 +512,11 @@ class ModelClientProcess(Process):
                 self.model_fps_number.value = model_fps()
                 if self.model.cacher is not None:
                     self.cache_hit_ratio.value = self.model.cacher.hits / (self.model.cacher.hits + self.model.cacher.miss + 1)
-                if args.use_tensorrt and args.model_cache and args.model_vram_cache:
-                    self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
+                try:
+                    if args.use_tensorrt and args.model_cache and args.model_vram_cache:
+                        self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
+                except:
+                    pass
 
 
 @torch.no_grad()
@@ -581,7 +584,7 @@ def main():
             cam_scale = 2
         if args.alpha_split:
             cam_width_scale = 2
-        cam = pyvirtualcam.Camera(width=args.output_w * cam_scale * cam_width_scale, height=args.output_h * cam_scale,
+        cam = pyvirtualcam.Camera(width=args.model_output_size * cam_scale * cam_width_scale, height=args.model_output_size * cam_scale,
                                   fps=60,
                                   backend=args.output_webcam,
                                   fmt=
@@ -848,7 +851,12 @@ def main():
         model_input_arr.extend(mouth_eye_vector_c)
         model_input_arr.extend(pose_vector_c)
 
+        if args.perf == 'main':
+            print('===')
+            print("input", time.perf_counter() - tic)
+            tic = time.perf_counter()
         model_process.input_queue.put_nowait(model_input_arr)
+
 
 
         try:
@@ -857,22 +865,21 @@ def main():
                 model_result_read_ptr = 0
                 model_return_fps()
                 need_a_copy = True
-            if need_a_copy:
-                model_output = model_output_nps[model_result_read_ptr].copy()
-                need_a_copy = False
-            interval = 1 / (model_return_fps.view()+ 1e-10) / len(model_output_nps) * 0.8
-            if model_result_read_ptr + 1 < len(model_output_nps) and time.time() >= ((model_result_read_ptr + 1) * interval + model_return_fps.last()):
-                model_result_read_ptr += 1
-                need_a_copy = True
         except queue.Empty:
             pass
-        if model_output is None:
-            time.sleep(1)
-            continue
+
+        if need_a_copy:
+            model_output = model_output_nps[model_result_read_ptr].copy()
+            need_a_copy = False
+        interval = 1 / (model_return_fps.view()+ 1e-10) / len(model_output_nps) * 0.8
+        if model_result_read_ptr + 1 < len(model_output_nps) and time.time() >= ((model_result_read_ptr + 1) * interval + model_return_fps.last()):
+            model_result_read_ptr += 1
+            need_a_copy = True
+
+
         postprocessed_image = model_output.copy()
         if args.perf == 'main':
-            print('===')
-            print("input", time.perf_counter() - tic)
+            print("Compute", time.perf_counter() - tic)
             tic = time.perf_counter()
 
         if extra_image is not None:
@@ -891,16 +898,17 @@ def main():
             rotate_angle -= 5
         
         rm = cv2.getRotationMatrix2D((args.model_output_size / 2, args.model_output_size / 2), rotate_angle, k_scale)
-        rm[0, 2] += dx + args.output_w / 2 - args.model_output_size / 2
-        rm[1, 2] += dy + args.output_h / 2 - args.model_output_size / 2
+        rm[0, 2] += dx + args.model_output_size / 2 - args.model_output_size / 2
+        rm[1, 2] += dy + args.model_output_size / 2 - args.model_output_size / 2
 
-        postprocessed_image = cv2.warpAffine(
-            postprocessed_image,
-            rm,
-            (args.model_output_size, args.model_output_size))
+        if args.bongo:
+            postprocessed_image = cv2.warpAffine(
+                postprocessed_image,
+                rm,
+                (args.model_output_size, args.model_output_size))
 
         if args.perf == 'main':
-            print("extendmovement", (time.perf_counter() - tic) * 1000)
+            print("postprocess", (time.perf_counter() - tic) * 1000)
             tic = time.perf_counter()
 
         output_fps_number = output_fps()
@@ -927,6 +935,10 @@ def main():
             postprocessed_image = cv2.hconcat([postprocessed_image, alpha_image])
 
         if args.debug:
+            if args.use_sr:
+                time.sleep(0.000001) # Opencv is using different strategy when putting 512x512 and 1024x1024 image to imshow, 
+                                    # in a way that 1024x1024 is much faster than 512x512 14msvs0.2ms(maybe using zero-copy?) so when using SR, add a delay to prevent overan
+                                    # Due to windows system limitation this actually sleep 16ms
             output_frame = postprocessed_image
             # resized_frame = cv2.resize(output_frame, (np.min(debug_image.shape[:2]), np.min(debug_image.shape[:2])))
             # output_frame = np.concatenate([debug_image, resized_frame], axis=1)

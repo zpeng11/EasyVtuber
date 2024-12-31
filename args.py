@@ -34,32 +34,32 @@ parser.add_argument('--gpu_cache', type=str, default='512mb')
 parser.add_argument('--simplify', type=int, default=1)
 
 parser.add_argument('--device_id', type=int, default=0)
-parser.add_argument('--use_tensorrt', type=bool, default=True)
+parser.add_argument('--use_tensorrt', action='store_true')
 
-parser.add_argument('--model_seperable', type=bool, default=True)
-parser.add_argument('--model_half', type=bool, default=True)
-parser.add_argument('--model_cache', type=bool, default=True)
-parser.add_argument('--model_vram_cache', type=bool, default=True)
+parser.add_argument('--model_seperable', action='store_true')
+parser.add_argument('--model_half', action='store_true')
+parser.add_argument('--model_cache', action='store_true')
+parser.add_argument('--model_vram_cache', action='store_true')
 # parser.add_argument('--model_cache_size', type=float, default=1.0)
 
-parser.add_argument('--use_interpolation', type=bool, default=False)
+parser.add_argument('--use_interpolation', action='store_true')
 parser.add_argument('--interpolation_scale', type=int, default=3)
-parser.add_argument('--interpolation_half', type=bool, default=True)
+parser.add_argument('--interpolation_half', action='store_true')
 
-parser.add_argument('--use_cacher', type=bool, default=True)
+parser.add_argument('--use_cacher', action='store_true')
 parser.add_argument('--cacher_quality', type=int, default=85)
 # parser.add_argument('--cacher_ram_size', type=float, default=1.0)
 
-parser.add_argument('--use_sr', type=bool, default=False)
-parser.add_argument('--sr_x4', type=bool, default=True)
-parser.add_argument('--sr_half', type=bool, default=True)
+parser.add_argument('--use_sr', action='store_true')
+parser.add_argument('--sr_x4', action='store_true')
+parser.add_argument('--sr_half', action='store_true')
 parser.add_argument('--sr_noise', type=int, default=1)
 
 parser.add_argument('--frame_rate_limit', type=int, default=30)
 
 args = parser.parse_args()
-args.output_w = int(args.output_size.split('x')[0])
-args.output_h = int(args.output_size.split('x')[1])
+# args.output_w = int(args.output_size.split('x')[0])
+# args.output_h = int(args.output_size.split('x')[1])
 if args.cache is not None:
     args.max_cache_len=convert_to_byte(args.cache)/pow(1024, 3) #In gigabytes
 else:
@@ -70,14 +70,7 @@ else:
     args.max_gpu_cache_len=0
 if args.output_webcam is None and args.output_dir is None: args.debug = True
 
-
-
-args.device_id = 1
-args.use_tensorrt = False
-args.use_interpolation = True
-args.interpolation_scale = 4
-args.use_cacher = True
-args.model_half = False
-
-
 args.model_output_size = 1024 if args.use_sr else 512
+
+if args.use_sr and args.use_interpolation:
+    args.use_interpolation = False
