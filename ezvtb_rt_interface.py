@@ -138,3 +138,9 @@ def get_core(
 
     return core
     
+if __name__ == '__main__':
+    from ezvtb_rt.trt_utils import check_build_all_models
+    try:
+        check_build_all_models()
+    except:
+        pass
