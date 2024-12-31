@@ -209,6 +209,8 @@ def launch():
 
         if args['use_tensorrt'] is not None and args['use_tensorrt']:
             run_args.append('--use_tensorrt')
+            run_args.append('--model_cache')
+            run_args.append('--model_vram_cache')
 
         run_args.append('--output_size')
         run_args.append('512x512')
