@@ -1,6 +1,6 @@
 # EasyVtuber  
 
-> 用买皮的钱，再买一张3080吧！
+> 用买皮的钱，再买一张~~3080~~随便哪张显卡吧！
 
 ![OBS Record With Transparent Virtural Cam Input](assets/new_sample.gif)
 
@@ -11,12 +11,18 @@ Fork自 https://github.com/GunwooHan/EasyVtuber
 
 [视频介绍和安装说明](https://www.bilibili.com/video/BV1uu411r7DR)  
 
+Updates:  
+使用 https://github.com/zpeng11/ezvtuber-rt/tree/main 项目转换的ONNX模型，实现TensorRT加速以及非N卡支持，在半精度和全精度下均有加速（具体取决于显卡）  
+为A卡和I卡提供DirectML支持，人人都能玩。  
+引入RIFE模型进行插帧，极限帧数提升达到50%-100%，配合锁帧可以有效降低使用占用。  
+使用 waifu2x 和 real-esrgan 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）
+
 ## Requirements  
 
 ### 硬件  
 
 - 支持FaceID的iPhone（使用ifacialmocap软件，需购买，需要稳定的WIFI连接）或网络摄像头（使用OpenCV）  
-- 支持PyTorch CUDA的NVIDIA显卡（参考：TUF RTX3080 默频 40FPS 80%占用）
+- 任意5年内的游戏级显卡
 ### 软件
 
 - 本方案在Windows 10上测试可用
@@ -25,37 +31,24 @@ Fork自 https://github.com/GunwooHan/EasyVtuber
 - Photoshop或其他图片处理软件
 - 科学上网方案，看懂英文网站和报错的能力
 
-## Installation(嵌入式Python version)  
-在bin文件夹内是一个基于Python3.10.5的Win64嵌入式版构建的轻量化运行环境  
-对于只是需要体验这个库的用户，推荐使用这个方式安装。  
+## Installation(Release包版本)  
+Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化模型。并且可以自动构建python环境。  
+构建运行环境依赖anaconda，若本机未安装anaconda将自动下载miniconda并在`envs`文件夹内展开。
 
-### 下载ZIP并解压或者克隆本Repo  
-点击[`Download ZIP`](../../archive/master.zip) 下载并解压，或者使用git克隆该仓库到你找得到的地方。  
-完整展开venv需要大约5.5G的硬盘空间。  
+### 下载并安装CUDAToolkit
+前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。
 
-### 下载预训练模型  
-使用00B快捷方式或者以下链接下载模型文件  
-https://github.com/pkhungurn/talking-head-anime-3-demo#download-the-models  
-从原repo中下载（this Dropbox link）的压缩文件  
-解压到`data/models`文件夹中，与`placeholder.txt`同级  
-正确的目录层级为  
-```
-+ models
-  - separable_float
-  - separable_half
-  - standard_float
-  - standard_half
-  - placeholder.txt
-```
-如果不确定自己有没有解压到正确位置，可以使用`00.检查并补齐必需文件.bat`  
+### 下载ZIP并解压  
+点击[`Download ZIP`](../../archive/master.zip) 下载并解压，源码和模型约3.5G。若在文件夹内展开miniconda和所有运行环境总计需要约20GB
 
 ### 构建运行环境
-运行适合你的地域的`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`  
-这个脚本会使用pip在bin目录下安装所有需要的依赖  
+双击运行适合你的地域的`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`  
+这个脚本会使用anaconda安装所有需要的依赖  
 两个脚本可以互相替代，并且支持从中断的位置继续  
 如果出现网络相关报错，直接关掉控制台，调整网络，重新运行即可  
 ![step01success](assets/01Success.png)  
 完全安装完成后再次运行脚本的输出如图所示。一般来说安装全程没有红字就是成功结束。  
+若是英伟达用户将会需要较长时间对模型进行TensorRT编译（>30min）
 
 ### 使用启动器测试结果
 运行`02B启动器（调试输出）.bat`  
@@ -66,69 +59,34 @@ https://github.com/pkhungurn/talking-head-anime-3-demo#download-the-models
 ### 配置输入输出设备
 在成功进行Debug输出之后，请移步之后的输入输出设备一节进行进一步配置以输出到OBS。
 
-## Installation(Venv version)  
-如果你还需要使用之前的Venv方案，请参考以下步骤  
 
-### 下载ZIP并解压或者克隆本Repo  
-点击[`Download ZIP`](../../archive/master.zip) 下载并解压，或者使用git克隆该仓库到你找得到的地方。  
-完整展开venv需要大约5.5G的硬盘空间。  
+## Installation(科学上网且使用Git)  
 
-### 创建虚拟环境
-此处默认你有一个正确的Python安装，不会装的话请使用前文的嵌入式方案  
-在项目目录下运行`python -m venv venv`创建虚拟环境
-
-### 切换到虚拟环境
-之后的操作都需要切换到虚拟环境中进行，分辨方式为命令行前会有`(venv)`标识  
-在控制台运行`venv\Scripts\activate.bat`切换到刚才创建的虚拟环境  
-之后你的python pip等操作都会在虚拟环境中执行  
-
-### 安装依赖  
-在虚拟环境中执行以下命令  
-`pip install -r .\requirements.txt`  
-`pip install torch --extra-index-url https://download.pytorch.org/whl/cu113`  
-
-### 运行启动器  
-在虚拟环境中执行以下命令  
-`python launcher.py`  
-
-
-## Installation(Conda version)  
-
-### 克隆本Repo  
-
-克隆完以后如果直接用Pycharm打开了，先不要进行Python解释器配置。
-
-### Python和Anaconda环境  
-
+### 安装Anaconda
 这个项目使用Anaconda进行包管理  
 首先前往https://www.anaconda.com/ 安装Anaconda  
-启动Anaconda Prompt控制台  
-国内用户建议此时切换到清华源（pip和conda都要换掉，尤其是conda的Pytorch Channel，pytorch本体太大了）  
-然后运行 `conda env create -f env_conda.yaml` 一键安装所有依赖  
-如果有报错（一般是网络问题），删掉配了一半的环境，`conda clean --all`清掉下载缓存，调整配置后再试
 
-安装完成后，在Pycharm内打开本项目，右下角解释器菜单点开，`Add Interpreter...`->`Conda Environment`->`Existing environment`  
-选好自己电脑上的`conda.exe`和刚才创建好的`talking-head-anime-2-demo`环境内的`python.exe`    
-点击OK，依赖全亮即可  
-
-### 下载预训练模型  
-
-https://github.com/pkhungurn/talking-head-anime-3-demo#download-the-models  
-从原repo中下载（this Dropbox link）的压缩文件  
-解压到`data/models`文件夹中，与`placeholder.txt`同级  
-正确的目录层级为  
+### 克隆项目和子项目
 ```
-+ models
-  - separable_float
-  - separable_half
-  - standard_float
-  - standard_half
-  - placeholder.txt
-```  
+git clone https://github.com/zpeng11/EasyVtuber.git
+git submodule init
+git submodule update --recursive --remote
+cd EasyVtuber
+```
+
+### 使用脚本安装环境并下载模型
+双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
+这两个脚本会构建名为`ezvtb_rt_venv`的conda环境，并从Github Release下载模型  
+
+### Pycharm 配置
+安装完成后，在Pycharm内打开本项目，右下角解释器菜单点开，`Add Interpreter...`->`Conda Environment`->`Existing environment`  
+选好自己电脑上的`conda.exe`和刚才创建好的`ezvtb_rt_venv`环境内的`python.exe`    
+点击OK，依赖全亮即可  
 
 ### 运行启动器  
 在Conda环境中执行以下命令  
 `python launcher.py`  
+
 
 ## 输入输出设备  
 

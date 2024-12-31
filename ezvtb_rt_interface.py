@@ -4,22 +4,16 @@ import subprocess
 import urllib.request
 import shutil
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-ezvtb_path = os.path.join(dir_path, 'ezvtuber-rt')
-ezvtb_main_path = os.path.join(dir_path, 'ezvtuber-rt-main')
-if not os.path.exists(ezvtb_path) and not os.path.exists(ezvtb_main_path): #Check if rt not exist
-    print('Trying to clone ezvtb_rt')
-    try:
-        subprocess.run(['git', 'submodule','init'], check=True, capture_output=True)
-        subprocess.run(['git', 'submodule','update', '--recursive', '--remote'], check=True, capture_output=True)
-    except:
-        print('Git submodule init update failed, try to download from github')
+def init_ezvtb_rt(search_dir = '.'):
+    if not os.path.exists(ezvtb_path) and not os.path.exists(ezvtb_main_path): #Check if rt not exist
         zip_path = 'https://github.com/zpeng11/ezvtuber-rt/archive/refs/heads/main.zip'
         filehandle, _ = urllib.request.urlretrieve(zip_path)
         os.rename(filehandle, filehandle + '.zip')
         shutil.unpack_archive(filehandle + '.zip' , '.')
-    print('Please go to download pretrained model to ezvtuber-rt or ezvtuber-rt-main data folder!')
-    exit(1)
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+ezvtb_path = os.path.join(dir_path, 'ezvtuber-rt')
+ezvtb_main_path = os.path.join(dir_path, 'ezvtuber-rt-main')
 
 project_path = ''
 if os.path.exists(ezvtb_path):
@@ -29,12 +23,6 @@ else:
 
 if project_path not in sys.path:
     sys.path.append(project_path)
-
-if not os.path.exists(os.path.join(project_path, 'data', 'tha3')):
-    from ezvtb_rt.init_utils import check_exist_all_models
-    print('Checking and downloading pretrained models')
-    check_exist_all_models()
-
 
 def get_core(
         #Device setting
@@ -79,26 +67,26 @@ def get_core(
         import pycuda.autoinit
         print(f'Using devcie {pycuda.autoinit.device.name()}')
 
-    tha_model_dir = os.path.join(project_path,'data', 'tha3',
+    tha_model_dir = os.path.join('.','data', 'models', 'tha3',
                                  'seperable' if model_seperable else 'standard', 
                                  'fp16' if model_half else 'fp32')
     rife_model_path = ''
     if use_interpolation:
-        rife_model_path = os.path.join(project_path,'data', 'rife_512',
+        rife_model_path = os.path.join('.','data', 'models','rife_512',
                                        f'x{interpolation_scale}', 'fp16' if interpolation_half else 'fp32')
         
     sr_model_path = ''
     if use_sr:
         if sr_x4:
             if sr_half:
-                sr_model_path = os.path.join(project_path,'data', 'Real-ESRGAN', 'exported_256_fp16')
+                sr_model_path = os.path.join('.','data', 'models', 'Real-ESRGAN', 'exported_256_fp16')
             else:
-                sr_model_path = os.path.join(project_path,'data', 'Real-ESRGAN', 'exported_256')
+                sr_model_path = os.path.join('.','data', 'models', 'Real-ESRGAN', 'exported_256')
         else: #x2
             if sr_half:
-                sr_model_path = os.path.join(project_path,'data', 'waifu2x_upconv', 'fp16', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
+                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp16', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
             else:
-                sr_model_path = os.path.join(project_path,'data', 'waifu2x_upconv', 'fp32', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
+                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp32', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
 
     print(f'THA3 Path:{tha_model_dir}')
     print(f'RIFE Path:{rife_model_path}')
@@ -139,8 +127,9 @@ def get_core(
     return core
     
 if __name__ == '__main__':
+    init_ezvtb_rt()
     from ezvtb_rt.trt_utils import check_build_all_models
     try:
-        check_build_all_models()
+        check_build_all_models('./data/models')
     except:
         pass
