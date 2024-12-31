@@ -901,11 +901,11 @@ def main():
         rm[0, 2] += dx + args.model_output_size / 2 - args.model_output_size / 2
         rm[1, 2] += dy + args.model_output_size / 2 - args.model_output_size / 2
 
-        if args.bongo:
-            postprocessed_image = cv2.warpAffine(
-                postprocessed_image,
-                rm,
-                (args.model_output_size, args.model_output_size))
+
+        postprocessed_image = cv2.warpAffine(
+            postprocessed_image,
+            rm,
+            (args.model_output_size, args.model_output_size))
 
         if args.perf == 'main':
             print("postprocess", (time.perf_counter() - tic) * 1000)

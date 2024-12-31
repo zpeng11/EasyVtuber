@@ -33,7 +33,6 @@ default_arg = {
     'ifm': None,
     'osf': '127.0.0.1:11573',
     'is_extend_movement': False,
-    'is_anime4k': False,
     'is_alpha_split': False,
     'is_bongo': False,
     'is_eyebrow': False,
@@ -83,7 +82,6 @@ def launch():
         'ifm': ifm.get(),
         'osf': osf.get(),
         'is_extend_movement': is_extend_movement.get(),
-        'is_anime4k': is_anime4k.get(),
         'is_alpha_split': is_alpha_split.get(),
         'is_bongo': is_bongo.get(),
         'is_eyebrow': is_eyebrow.get(),
@@ -146,8 +144,6 @@ def launch():
             run_args.append('obs')
         elif args['output'] == 2:
             run_args.append('--debug')
-        if args['is_anime4k']:
-            run_args.append('--anime4k')
         if args['is_alpha_split']:
             run_args.append('--alpha_split')
         if args['is_extend_movement']:
@@ -197,11 +193,14 @@ def launch():
             run_args.append(args['frame_rate_limit'])
             
         if args['sr'] is not None and args['sr'] != 'Off':
-            run_args.append('--use_sr')
-            if 'x4' in args['sr']:
-                run_args.append('--sr_x4')
-            if 'half' in args['sr']:
-                run_args.append('--sr_half')
+            if 'anime4k' in args['sr']:
+                run_args.append('--anime4k')
+            else:
+                run_args.append('--use_sr')
+                if 'x4' in args['sr']:
+                    run_args.append('--sr_x4')
+                if 'half' in args['sr']:
+                    run_args.append('--sr_half')
 
         if args['device_id'] is not None:
             run_args.append('--device_id')
@@ -309,7 +308,7 @@ frame_rate_limit_combo = ttk.Combobox(frameR, textvariable=frame_rate_limit, val
 
 ttk.Label(frameR, text="Super Resolution").pack(fill='x', expand=True)
 sr = tk.StringVar(value=args['sr'])
-sr_combo = ttk.Combobox(frameR, textvariable=sr, value=['Off', 'x2_half', 'x4_half', 'x2_full', 'x4_full'], state='readonly').pack(fill='x', expand=True)
+sr_combo = ttk.Combobox(frameR, textvariable=sr, value=['Off', 'anime4k_x2', 'waifu2x_x2_half', 'real-esrgan_x4_half', 'waifu2x_x2_full', 'real-esrgan_x4_full'], state='readonly').pack(fill='x', expand=True)
 
 
 
@@ -320,8 +319,6 @@ ttk.Checkbutton(frameL, text='Eyebrow (iFM Only)', variable=is_eyebrow).pack(fil
 is_extend_movement = tk.BooleanVar(value=args['is_extend_movement'])
 ttk.Checkbutton(frameL, text='Extend Movement', variable=is_extend_movement).pack(fill='x', expand=True)
 
-is_anime4k = tk.BooleanVar(value=args['is_anime4k'])
-ttk.Checkbutton(frameL, text='Anime4K', variable=is_anime4k).pack(fill='x', expand=True)
 
 is_alpha_split = tk.BooleanVar(value=args['is_alpha_split'])
 ttk.Checkbutton(frameL, text='Alpha Split', variable=is_alpha_split).pack(fill='x', expand=True)
