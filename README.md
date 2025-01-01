@@ -39,7 +39,7 @@ Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化�
 前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。
 
 ### 下载ZIP并解压  
-点击[`Download ZIP`](../../archive/master.zip) 下载并解压，源码和模型约3.5G。若在文件夹内展开miniconda和所有运行环境总计需要约20GB
+点击[`Download ZIP`](../../releases/download/v0.1.0/EasyVtuber.zip) 下载并解压，源码和模型约3.5G。若在文件夹内展开miniconda和所有运行环境总计需要约20GB
 
 ### 构建运行环境
 双击运行适合你的地域的`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`  
