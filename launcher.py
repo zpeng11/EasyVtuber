@@ -142,6 +142,9 @@ def launch():
         elif args['output'] == 1:
             run_args.append('--output_webcam')
             run_args.append('obs')
+        elif args['output'] == 3:
+            run_args.append('--output_webcam')
+            run_args.append('spout')
         elif args['output'] == 2:
             run_args.append('--debug')
         if args['is_alpha_split']:
@@ -332,6 +335,7 @@ output = tk.IntVar(value=args['output'])
 ttk.Label(frameL, text="Output").pack(fill='x', expand=True)
 ttk.Radiobutton(frameL, text='Unity Capture', value=0, variable=output).pack(fill='x', expand=True)
 ttk.Radiobutton(frameL, text='OBS Virtual Camera', value=1, variable=output).pack(fill='x', expand=True)
+ttk.Radiobutton(frameL, text='Spout2', value=3, variable=output).pack(fill='x', expand=True)
 ttk.Radiobutton(frameL, text='Initial Debug Output', value=2, variable=output).pack(fill='x', expand=True)
 
 

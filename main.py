@@ -34,6 +34,9 @@ from tha3.util import torch_linear_to_srgb, resize_PIL_image, extract_PIL_image_
     extract_pytorch_image_from_PIL_image
 
 import collections
+from PySpout import SpoutSender
+from OpenGL.GL import GL_RGBA
+
 
 
 def convert_linear_to_srgb(image: torch.Tensor) -> torch.Tensor:
@@ -577,6 +580,7 @@ def main():
 
     facemesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True)
 
+
     if args.output_webcam:
         cam_scale = 1
         cam_width_scale = 1
@@ -584,13 +588,18 @@ def main():
             cam_scale = 2
         if args.alpha_split:
             cam_width_scale = 2
-        cam = pyvirtualcam.Camera(width=args.model_output_size * cam_scale * cam_width_scale, height=args.model_output_size * cam_scale,
-                                  fps=60,
-                                  backend=args.output_webcam,
-                                  fmt=
-                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
-                                      args.output_webcam])
-        print(f'Using virtual camera: {cam.device}')
+
+        if args.output_webcam == 'spout':
+            # Create the sender
+            sender = SpoutSender("EasyVtuber", args.model_output_size * cam_scale * cam_width_scale, args.model_output_size * cam_scale, GL_RGBA)
+        else:
+            cam = pyvirtualcam.Camera(width=args.model_output_size * cam_scale * cam_width_scale, height=args.model_output_size * cam_scale,
+                                      fps=60,
+                                      backend=args.output_webcam,
+                                      fmt=
+                                      {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
+                                          args.output_webcam])
+            print(f'Using virtual camera: {cam.device}')
 
     a = None
 
@@ -967,10 +976,14 @@ def main():
             # result_image[720 - 512:, 1280 // 2 - 256:1280 // 2 + 256] = cv2.resize(
             #     cv2.cvtColor(postprocessing_image(output_image.cpu()), cv2.COLOR_RGBA2RGB), (512, 512))
             result_image = postprocessed_image
-            if args.output_webcam == 'obs':
-                result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2RGB)
-            cam.send(result_image)
-            cam.sleep_until_next_frame()
+            if args.output_webcam == 'spout':
+                sender.send_image(cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2RGBA),False)
+                time.sleep(0.000001)
+            else:
+                if args.output_webcam == 'obs':
+                    result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2RGB)
+                cam.send(result_image)
+                cam.sleep_until_next_frame()
         if args.perf == 'main':
             print("output", (time.perf_counter() - tic) * 1000)
             tic = time.perf_counter()
