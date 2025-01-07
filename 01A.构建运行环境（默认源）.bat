@@ -38,5 +38,4 @@ echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 t
 
 call python -m pip install -r requirements.txt --no-warn-script-location
 
-call python ezvtb_rt_interface.py
 pause
