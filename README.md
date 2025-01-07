@@ -53,8 +53,13 @@ Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化�
 
 ### 检查模型并构建TensorRT
 在安装并确认上一步没问题后可以点击`01C.检查模型并构建TensorRT加速  .bat`   
-对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min）。若这一步报错，有三种可能  
-1. 上一步环境安装有错误，一般检查源重新运行上一步即可,若反复错误则直接手动删除`envs`文件夹再重新运行上一步
+对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min）。  
+非英伟达显卡成功如图所示:  
+![step01Csuccess](assets/non_nvidia_success.PNG)
+英伟达显卡成功如图所示:  
+![step01Csuccess](assets/nvidia_success.PNG)
+否则都发生了错误，有三种可能
+1. 上一步环境安装有错误（一般都是），一般检查源重新运行上一步即可,若反复错误则直接手动删除`envs`文件夹再重新运行上一步
 2. nvcc没找到，等于未提前安装CudaTookit，请从头安装CudaTookit开始重新安装
 3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 
