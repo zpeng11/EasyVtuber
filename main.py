@@ -886,7 +886,7 @@ def main():
             need_a_copy = True
 
 
-        postprocessed_image = model_output.copy()
+        postprocessed_image = model_output
         if args.perf == 'main':
             print("Compute", time.perf_counter() - tic)
             tic = time.perf_counter()
