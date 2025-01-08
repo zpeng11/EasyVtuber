@@ -13,3 +13,4 @@ onnx
 onnxruntime-directml 
 turbojpeg 
 tqdm
+torch

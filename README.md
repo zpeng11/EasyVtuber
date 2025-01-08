@@ -37,10 +37,19 @@ Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化�
 构建运行环境依赖anaconda，若本机未安装anaconda将自动下载miniconda并在`envs`文件夹内展开。
 
 ### 下载并安装CUDAToolkit
-前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。
+前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
+若安装成功并重启可开启命令行工具验证应当出现如下图结果：  
+```
+C:\Users\Eleven>nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2024 NVIDIA Corporation
+Built on Thu_Sep_12_02:55:00_Pacific_Daylight_Time_2024
+Cuda compilation tools, release 12.6, V12.6.77
+Build cuda_12.6.r12.6/compiler.34841621_0
+```
 
 ### 下载ZIP并解压  
-点击[`Download ZIP`](../../releases/download/v0.1.0/EasyVtuber.zip) 下载并解压，源码和模型约3.5G。若在文件夹内展开miniconda和所有运行环境总计需要约20GB
+点击[`Download ZIP`](../../releases/download/v0.1.0/EasyVtuber.zip) 下载并解压，源码和模型约1.5G。若在文件夹内展开miniconda和所有运行环境总计需要约15GB
 
 ### 构建运行环境
 双击运行适合你的地域的`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`  
@@ -53,13 +62,13 @@ Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化�
 
 ### 检查模型并构建TensorRT
 在安装并确认上一步没问题后可以点击`01C.检查模型并构建TensorRT加速  .bat`   
-对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min）。  
+对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min。  
 非英伟达显卡成功如图所示:  
 ![step01Csuccess](assets/non_nvidia_success.PNG)
 英伟达显卡成功如图所示:  
 ![step01Csuccess](assets/nvidia_success.PNG)
 否则都发生了错误，有三种可能
-1. 上一步环境安装有错误（一般都是），一般检查源重新运行上一步即可,若反复错误则直接手动删除`envs`文件夹再重新运行上一步
+1. 上一步环境安装有错误（一般缺少库都是这个原因，网络问题导致安装失败），检查源重新运行上一步即可,若反复错误则直接手动删除`envs`文件夹再试
 2. nvcc没找到，等于未提前安装CudaTookit，请从头安装CudaTookit开始重新安装
 3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 
@@ -114,7 +123,7 @@ git submodule update --recursive --remote
 
 #### OBS Virtual Camera
 
-目前更推荐这个方案，UnityCapture存在未查明的性能瓶颈  
+UnityCapture存在未查明的性能瓶颈  
 如果你选择自己进行抠像你可以直接输出到obs，如果你需要RGBA支持则需要额外使用一个Shader  
 下载并安装StreamFX https://github.com/Xaymar/obs-StreamFX  
 下载Shader（感谢树根的协助） https://github.com/shugen002/shader/blob/master/merge%20alpha2.hlsl  
