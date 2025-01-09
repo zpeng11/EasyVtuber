@@ -64,10 +64,14 @@ finally:
 p = None
 dirPath = 'data/images'
 characterList = []
-for item in sorted(os.listdir(dirPath), key=lambda x: -os.path.getmtime(os.path.join(dirPath, x))):
-    if '.png' == item[-4:]:
-        characterList.append(item[:-4])
 
+def refreshList():
+    global characterList
+    characterList = []
+    for item in sorted(os.listdir(dirPath), key=lambda x: -os.path.getmtime(os.path.join(dirPath, x))):
+        if '.png' == item[-4:]:
+            characterList.append(item[:-4])
+refreshList()
 
 class OptionPanel(wx.Panel):
     def __init__(self, parent, title='', desc='', choices=None, mapping=None, type=0, default=None):
@@ -266,27 +270,33 @@ class LauncherPanel(wx.Panel):
                 self.optionDict['cache_simplify'],
                 self.optionDict['cache_compression'],
             ]
+            presets={
+                'Low':[0,1,1,5,3],
+                'Medium':[1,1,1,4,2],
+                'High':[1,2,2,2,2],
+                'Ultra':[3,3,3,1,1]
+            }
+
             if s=='Custom':
                 for c in presetControls: self.optionSizer.Show(c)
             else:
                 for c in presetControls: self.optionSizer.Hide(c)
-            if s=='Low':
-                opt=[0,1,1,5,3]
-                for i in range(5): presetControls[i].control.SetSelection(opt[i])
-            elif s=='Medium':
-                opt=[0,1,1,4,2]
-                for i in range(5): presetControls[i].control.SetSelection(opt[i])
-            elif s=='High':
-                opt=[0,2,2,2,2]
-                for i in range(5): presetControls[i].control.SetSelection(opt[i])
-            elif s=='Ultra':
-                opt=[0,3,3,1,1]
+            if s in presets:
+                opt=presets[s]
                 for i in range(5): presetControls[i].control.SetSelection(opt[i])
 
             self.frame.fSizer.Layout()
             self.frame.Fit()
         self.optionDict['preset'].Bind(wx.EVT_CHOICE,presetChoice)
         presetChoice()
+
+        def onActivate(e):
+            global characterList
+            tName=self.optionDict['character'].GetValue()
+            refreshList()
+            self.optionDict['character'].control.SetItems(characterList)
+            self.optionDict['character'].control.SetSelection(characterList.index(tName))
+        self.frame.Bind(wx.EVT_ACTIVATE,onActivate)
     # def OnAddWidget(self, e):
     #     self.number_of_buttons += 1 
     #     label = "按钮 %s" % self.number_of_buttons 
