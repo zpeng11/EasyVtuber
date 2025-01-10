@@ -255,7 +255,7 @@ def inputChange():
         ifmEnt.pack_forget()
         osfLbl.pack_forget()
         osfEnt.pack_forget()
-        frameLTxt.configure(height=0)
+
 input = tk.IntVar(value=args['input'])
 ttk.Label(frameL, text="Face Data Source").pack(fill='x', expand=True)
 ttk.Radiobutton(frameL, text='iFacialMocap', value=0, variable=input, command=inputChange).pack(fill='x', expand=True)
