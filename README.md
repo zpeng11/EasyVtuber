@@ -32,24 +32,35 @@ Updates:
 - Photoshop或其他图片处理软件
 - 科学上网方案，看懂英文网站和报错的能力
 
+## 懒人包版本
+TODO
+
 ## Installation(Release包版本)  
 Release包版本带有本项目源码，ezvtuber-rt项目源码，和静态化模型。并且可以自动构建python环境。  
 构建运行环境依赖anaconda，若本机未安装anaconda将自动下载miniconda并在`envs`文件夹内展开。
 
 ### 下载并安装CUDAToolkit
 前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
-若安装成功并重启可开启命令行工具验证应当出现如下图结果：  
+若安装成功并重启可开启命令行工具验证出现类似如下结果：  
 ```
-C:\Users\Eleven>nvcc --version
-nvcc: NVIDIA (R) Cuda compiler driver
-Copyright (c) 2005-2024 NVIDIA Corporation
-Built on Thu_Sep_12_02:55:00_Pacific_Daylight_Time_2024
-Cuda compilation tools, release 12.6, V12.6.77
-Build cuda_12.6.r12.6/compiler.34841621_0
+C:\Users\Eleven>nvidia-smi
+Thu Jan  9 22:02:29 2025
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 556.12                 Driver Version: 556.12         CUDA Version: 12.5     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce GTX 1660 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
+| 32%   34C    P8             10W /  125W |     569MiB /   6144MiB |      1%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+........
 ```
-
+或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 ### 下载ZIP并解压  
-点击[`Download ZIP`](../../releases/download/v0.1.0/EasyVtuber.zip) 下载并解压，源码和模型约1.5G。若在文件夹内展开miniconda和所有运行环境总计需要约15GB
+点击 [`Download ZIP`](../../releases/download/v0.1.0/EasyVtuber.zip) 下载并解压，源码和模型约1.8G。若在文件夹内展开miniconda和所有运行环境总计需要约15GB
 
 ### 构建运行环境
 双击运行适合你的地域的`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`  
@@ -61,19 +72,19 @@ Build cuda_12.6.r12.6/compiler.34841621_0
 如出现问题，请对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。  
 
 ### 检查模型并构建TensorRT
-在安装并确认上一步没问题后可以点击`01C.检查模型并构建TensorRT加速  .bat`   
+在安装并确认上一步没问题后可以点击`02.检查模型并构建TensorRT加速  .bat`   
 对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min。  
 非英伟达显卡成功如图所示:  
 ![step01Csuccess](assets/non_nvidia_success.PNG)
 英伟达显卡成功如图所示:  
 ![step01Csuccess](assets/nvidia_success.PNG)
 否则都发生了错误，有三种可能
-1. 上一步环境安装有错误（一般缺少库都是这个原因，网络问题导致安装失败），检查源重新运行上一步即可,若反复错误则直接手动删除`envs`文件夹再试
-2. nvcc没找到，等于未提前安装CudaTookit，请从头安装CudaTookit开始重新安装
+1. 上一步环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试
+2. nvcc没找到，双击 `00.检查安装CudaToolkits.bat` 来验证
 3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 
 ### 使用启动器测试结果
-运行`02B启动器（调试输出）.bat`  
+运行`03B启动器（调试输出）.bat`  
 直接点击界面底部的`Save & Launch`
 如果看到了弹出的opencv输出窗体，则安装成功完成
 ![img.png](assets/02success.png)
@@ -84,9 +95,15 @@ Build cuda_12.6.r12.6/compiler.34841621_0
 
 ## Installation(科学上网且使用Git)  
 
+### 安装CudaToolkits
+
 ### 安装Anaconda
 这个项目使用Anaconda进行包管理  
-首先前往https://www.anaconda.com/ 安装Anaconda  
+首先前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
+```
+C:\Users\Eleven>conda --version
+conda 24.11.3
+```
 
 ### 克隆项目和子项目
 ```
@@ -105,7 +122,7 @@ git submodule update --recursive --remote
 下载 https://github.com/zpeng11/ezvtuber-rt/releases/download/0.0.1/20241220.zip 并解压到`data/models`文件夹下
 
 ### 检查模型并构建TensorRT
-点击`01C.检查模型并构建TensorRT加速  .bat`检查模型并构建TensorRT
+点击`02.检查模型并构建TensorRT加速  .bat`检查模型并构建TensorRT
 
 ### Pycharm 配置
 安装完成后，在Pycharm内打开本项目，右下角解释器菜单点开，`Add Interpreter...`->`Conda Environment`->`Existing environment`  
