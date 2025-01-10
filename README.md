@@ -71,35 +71,42 @@ Thu Jan  9 22:02:29 2025
 完全安装完成后再次运行脚本的输出如图所示。一般来说安装全程没有红字就是成功结束。  
 如出现问题，请对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。  
 
-### 检查模型并构建TensorRT
-在安装并确认上一步没问题后可以点击`02.检查模型并构建TensorRT加速  .bat`   
-对英伟达用户这将会需要较长时间对模型进行TensorRT编译（>30min。  
-非英伟达显卡成功如图所示:  
-![step01Csuccess](assets/non_nvidia_success.PNG)
-英伟达显卡成功如图所示:  
-![step01Csuccess](assets/nvidia_success.PNG)
-否则都发生了错误，有三种可能
-1. 上一步环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试
-2. nvcc没找到，双击 `00.检查安装CudaToolkits.bat` 来验证
-3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
-
 ### 使用启动器测试结果
 运行`03B启动器（调试输出）.bat`  
 直接点击界面底部的`Save & Launch`
 如果看到了弹出的opencv输出窗体，则安装成功完成
-![img.png](assets/02success.png)
+![img.png](assets/02success.png)   
 
+
+英伟达显卡首次启动会尝试构建TensorRT加速（类似于编译着色器）以取得加速效果。如下图  
+```
+Start testing if TensorRT works on this machine
+  0%|                                                                                           | 0/38 [00:00<?, ?it/s][01/09/2025-22:36:52] [TRT] [I] [MemUsageChange] Init CUDA: CPU +89, GPU +0, now: CPU 6758, GPU 1009 (MiB)
+[01/09/2025-22:36:57] [TRT] [I] [MemUsageChange] Init builder kernel library: CPU +1358, GPU +194, now: CPU 8423, GPU 1203 (MiB)
+[01/09/2025-22:36:57] [TRT] [I] Loading ONNX file from path ./data/models\rife_512\x2\fp32.onnx...
+[01/09/2025-22:36:57] [TRT] [I] Beginning ONNX file parsing
+[01/09/2025-22:36:57] [TRT] [I] Completed parsing of ONNX file
+[01/09/2025-22:36:57] [TRT] [I] Input number: 2
+[01/09/2025-22:36:57] [TRT] [I] Output number: 2
+[01/09/2025-22:36:57] [TRT] [I] Building an engine from file ./data/models\rife_512\x2\fp32.onnx; this may take a while...
+```
+需要大约>20min(取决于显卡)进行构建，运行速度可以带来极大提升。  
+如果出现错误无法启动有三种可能：
+1. 上一步环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用懒人包。
+2. nvcc编译器没找到，双击 `00.检查安装CudaToolkits.bat` 来验证
+3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 ### 配置输入输出设备
 在成功进行Debug输出之后，请移步之后的输入输出设备一节进行进一步配置以输出到OBS。
 
 
 ## Installation(科学上网且使用Git)  
+可使用此安装方法对本项目二次开发
 
 ### 安装CudaToolkits
+与Release版本方法相同
 
 ### 安装Anaconda
-这个项目使用Anaconda进行包管理  
-首先前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
+前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
 ```
 C:\Users\Eleven>conda --version
 conda 24.11.3
@@ -113,7 +120,7 @@ git submodule init
 git submodule update --recursive --remote
 ```
 
-### 使用脚本安装环境并下载模型
+### 使用脚本安装环境
 双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
 
@@ -121,13 +128,14 @@ git submodule update --recursive --remote
 前往模型release 地址 https://github.com/zpeng11/ezvtuber-rt/releases/tag/0.0.1   
 下载 https://github.com/zpeng11/ezvtuber-rt/releases/download/0.0.1/20241220.zip 并解压到`data/models`文件夹下
 
-### 检查模型并构建TensorRT
-点击`02.检查模型并构建TensorRT加速  .bat`检查模型并构建TensorRT
-
 ### Pycharm 配置
 安装完成后，在Pycharm内打开本项目，右下角解释器菜单点开，`Add Interpreter...`->`Conda Environment`->`Existing environment`  
 选好自己电脑上的`conda.exe`和刚才创建好的`ezvtb_rt_venv`环境内的`python.exe`    
 点击OK，依赖全亮即可  
+
+### 检查环境模型，并构建TensorRT  
+在Conda环境中执行以下命令  
+`python ezvtb_rt_interface.py`  
 
 ### 运行启动器  
 在Conda环境中执行以下命令  
