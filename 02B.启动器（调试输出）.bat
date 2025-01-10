@@ -1,12 +1,12 @@
 @echo on
 cd /D "%~dp0"
-IF EXIST %~dp0envs\miniconda3\Scripts SET PATH=%~dp0envs\miniconda3\Scripts;%PATH%
-call activate
-call conda env list
-call conda activate ezvtb_rt_venv
-call conda env list
 
-IF not EXIST %~dp0launcher.json call python ezvtb_rt_interface.py
+SET PATH=%~dp0envs\python_embedded;%~dp0envs\python_embedded\Scripts;%PATH%
+
+IF not EXIST %~dp0launcher.json (
+    call pip install --no-index --find-links %~dp0envs\wheels  -r requirements-pack.txt 
+    call python ezvtb_rt_interface.py
+)
 
 python launcher2.py
 
