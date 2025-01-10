@@ -72,9 +72,9 @@ Thu Jan  9 22:02:29 2025
 如出现问题，请对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。  
 
 ### 使用启动器测试结果
-运行`03B启动器（调试输出）.bat`  
+运行`02B启动器（调试输出）.bat`  
 直接点击界面底部的`Save & Launch`
-如果看到了弹出的opencv输出窗体，则安装成功完成
+如果看到了弹出的opencv输出窗体，则安装成功完成  
 ![img.png](assets/02success.png)   
 
 
@@ -90,7 +90,7 @@ Start testing if TensorRT works on this machine
 [01/09/2025-22:36:57] [TRT] [I] Output number: 2
 [01/09/2025-22:36:57] [TRT] [I] Building an engine from file ./data/models\rife_512\x2\fp32.onnx; this may take a while...
 ```
-需要大约>20min(取决于显卡)进行构建，运行速度可以带来极大提升。  
+需要大约>20min(取决于显卡)进行构建，完成后运行速度可以带来极大提升。  
 如果出现错误无法启动有三种可能：
 1. 上一步环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用懒人包。
 2. nvcc编译器没找到，双击 `00.检查安装CudaToolkits.bat` 来验证
@@ -120,12 +120,22 @@ git submodule init
 git submodule update --recursive --remote
 ```
 
-### 使用脚本安装环境
+### 安装环境
 双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
+或可以用如下命令手动创建：   
+```
+conda create -y -n ezvtb_rt_venv python=3.10
+conda activate ezvtb_rt_venv
+conda install -y conda-forge::pycuda
+python -m pip install --upgrade pip wheel
+python -m pip install nvidia-cudnn-cu12
+pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
+python -m pip install -r requirements.txt --no-warn-script-location
+```
 
 ### 下载模型
-前往模型release 地址 https://github.com/zpeng11/ezvtuber-rt/releases/tag/0.0.1   
+前往模型 release 地址 https://github.com/zpeng11/ezvtuber-rt/releases/tag/0.0.1   
 下载 https://github.com/zpeng11/ezvtuber-rt/releases/download/0.0.1/20241220.zip 并解压到`data/models`文件夹下
 
 ### Pycharm 配置
