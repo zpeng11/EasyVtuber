@@ -34,9 +34,9 @@ Updates:
 
 ## 懒人包版本
 请使用合适方式下载懒人包并自行解压：
-* [夸克网盘]()  
-* [磁力链接]()  
-* [谷歌网盘]()  
+* [夸克网盘](https://pan.quark.cn/s/b61ad5315f59)  
+* [磁力链接](magnet:?xt=urn:btih:31ea4e070603b02a2ffd38418116b08b74551722)  
+* [谷歌网盘](https://drive.google.com/drive/folders/1cYj18EfVQ2Cl348_rkCu_fgaasHTI_io?usp=drive_link)  
 ### 下载并安装CUDAToolkit
 前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
 若安装成功并重启可开启命令行工具验证出现类似如下结果：  
