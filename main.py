@@ -352,6 +352,7 @@ class ModelClientProcess(Process):
                               model_cache=args.model_cache, 
                               model_vram_cache=args.model_vram_cache,
                               model_cache_size=args.max_gpu_cache_len, 
+                              model_use_eyebrow=args.eyebrow,
 
                               use_interpolation=args.use_interpolation,
                               interpolation_scale=args.interpolation_scale,

@@ -9,7 +9,7 @@ import sys
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 p = None
 cache_simplify_map = {
-    'Off':0,
+    'OFF':0,
     'Low':1,
     'Medium':2,
     'High':3,
@@ -20,7 +20,7 @@ cache_simplify_map = {
 
 
 cache_simplify_quality_map = {
-    'Off':100,
+    'OFF':100,
     'Low':99,
     'Medium':95,
     'High':90,
