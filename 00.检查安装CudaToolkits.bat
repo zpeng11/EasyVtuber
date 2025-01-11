@@ -1,5 +1,4 @@
 @echo off
-echo 1. Pretrained data
 
 WHERE nvidia-smi
 IF %ERRORLEVEL% NEQ 0 (
