@@ -12,18 +12,19 @@ Fork自 https://github.com/GunwooHan/EasyVtuber
 [视频介绍和安装说明](https://www.bilibili.com/video/BV1uu411r7DR)  
 
 Updates:  
-使用 https://github.com/zpeng11/ezvtuber-rt/tree/main 项目转换的ONNX模型，实现TensorRT加速以及非N卡支持，在半精度和全精度下均有加速（具体取决于显卡）  
-为A卡和I卡提供DirectML支持，人人都能玩。  
-引入RIFE模型进行插帧，极限帧数提升达到50%-100%，配合锁帧可以有效降低使用占用。  
-使用TurboJPEG 获得成倍缓存命中率提升，在长时间使用上显卡减负效果相当出色。  
-使用 waifu2x 和 real-esrgan 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）
+* 使用 https://github.com/zpeng11/ezvtuber-rt/tree/main 项目转换的ONNX模型，实现TensorRT加速以及非N卡支持，在半精度和全精度下均有加速（具体取决于显卡）  
+* 为A卡和I卡提供DirectML支持，人人都能玩。  
+* 引入RIFE模型进行插帧，极限帧数提升达到50%-100%，配合锁帧可以有效降低使用占用。  
+* 使用TurboJPEG 获得成倍缓存命中率提升，在长时间使用上显卡减负效果相当出色。  
+* 使用 [waifu2x](https://github.com/nagadomi/waifu2x) 和 [real-esrgan]() 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）  
+* 更漂亮的新启动器界面，带中文介绍更加简单易用  
 
 ## Requirements  
 
 ### 硬件  
 
 - 支持FaceID的iPhone（使用ifacialmocap软件，需购买，需要稳定的WIFI连接）或网络摄像头（使用OpenCV）  
-- 任意5年内的游戏级显卡
+- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用
 ### 软件
 
 - 本方案在Windows 10上测试可用
@@ -32,10 +33,10 @@ Updates:
 - Photoshop或其他图片处理软件
 - 科学上网方案，看懂英文网站和报错的能力
 
-## 懒人包版本
-请使用合适方式下载懒人包并自行解压：
+## 整合包版本
+请使用合适方式下载整合包并自行解压：
 * [夸克网盘](https://pan.quark.cn/s/b61ad5315f59)  
-* [磁力链接](magnet:?xt=urn:btih:31ea4e070603b02a2ffd38418116b08b74551722)  
+* 磁力链接 magnet:?xt=urn:btih:31ea4e070603b02a2ffd38418116b08b74551722
 * [谷歌网盘](https://drive.google.com/drive/folders/1cYj18EfVQ2Cl348_rkCu_fgaasHTI_io?usp=drive_link)  
 ### 下载并安装CUDAToolkit
 前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
@@ -58,8 +59,8 @@ Thu Jan  9 22:02:29 2025
 ```
 或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 
-### 安装Spout obs插件(可选)
-安装懒人包附带的 `OBS_Spout2_Plugin_Install_v1.8.exe`， 安装包来自 https://github.com/Off-World-Live/obs-spout2-plugin 项目，可以提供透明通道给OBS。
+### 安装Spout2 OBS插件(可选)
+安装整合包附带的 `OBS_Spout2_Plugin_Install_v1.8.exe`， 安装包来自 https://github.com/Off-World-Live/obs-spout2-plugin 项目，可以提供透明通道给OBS。
 
 ### 启动项目
 双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，首次启动将会花约5分钟安装pip资源， 若是英伟达用户将会开始TensorRT构建，额外需要>20min时间(取决于显卡)，结束后可以大幅提升运行速度，构建的开头和结束输出如下。  
@@ -96,7 +97,7 @@ Start testing if TensorRT works on this machine
 可使用此安装方法对本项目二次开发
 
 ### 安装CudaToolkits
-同懒人包版本
+同整合包版本
 
 ### 安装Anaconda（可选）
 前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
@@ -147,7 +148,7 @@ python -m pip install -r requirements.txt --no-warn-script-location
 
 ### 错误排查
 当运行TensorRT构建或启动器出现错误时，请参考如下可能性：
-1. 环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用懒人包。
+1. 环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用整合包。
 2. nvcc编译器没找到，即CudaToolkit安装有误，双击 `00.检查安装CudaToolkits.bat` 来验证
 3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 
