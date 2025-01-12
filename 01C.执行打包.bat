@@ -29,8 +29,6 @@ call conda install -y pycuda -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cl
 
 call conda install -y conda-pack -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ 
 
-call python -m pip install --upgrade pip wheel -i https://mirrors.aliyun.com/pypi/simple/
-
 call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded.zip --format zip
 
 call python -m pip wheel nvidia-cudnn-cu12 -i https://mirrors.aliyun.com/pypi/simple/ -w envs\wheels
