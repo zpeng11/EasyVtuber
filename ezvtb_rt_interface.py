@@ -34,6 +34,7 @@ def get_core(
         model_cache:bool = True,#Only works for tensorrt
         model_vram_cache:bool = True, #Only works for tensorrt
         model_cache_size:float = 1.0, #unit of GigaBytes, only works for tensorrt
+        model_use_eyebrow:bool = True,
         #RIFE interpolation setting
         use_interpolation:bool = True,
         interpolation_scale:int = 2,
@@ -106,10 +107,10 @@ def get_core(
         else:
             if model_vram_cache:
                 from ezvtb_rt.tha import THACoreCachedVRAM
-                tha = THACoreCachedVRAM(tha_model_dir, model_cache_size)
+                tha = THACoreCachedVRAM(tha_model_dir, model_cache_size, model_use_eyebrow)
             else:
                 from ezvtb_rt.tha import THACoreCachedRAM
-                tha = THACoreCachedRAM(tha_model_dir, model_cache_size)
+                tha = THACoreCachedRAM(tha_model_dir, model_cache_size, model_use_eyebrow)
         rife = None
         if use_interpolation:
             from ezvtb_rt.rife import RIFECoreLinked
@@ -122,7 +123,7 @@ def get_core(
         core = Core(tha, cacher, sr, rife)
     else: #Use directml
         from ezvtb_rt.core_ort import CoreORT
-        core = CoreORT(tha_model_dir, rife_path = rife_model_path if len(rife_model_path) > 0 else None, sr_path = sr_model_path if len(sr_model_path) > 0 else None, cacher=cacher, device_id=device_id)
+        core = CoreORT(tha_model_dir, rife_path = rife_model_path if len(rife_model_path) > 0 else None, sr_path = sr_model_path if len(sr_model_path) > 0 else None, cacher=cacher, device_id=device_id, use_eyebrow = model_use_eyebrow)
 
     return core
     

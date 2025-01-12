@@ -29,7 +29,6 @@ call conda activate ezvtb_rt_venv
 call conda env list
 
 call conda install -y conda-forge::pycuda 
-call conda install -y pytorch-cpu
 
 call python -m pip install --upgrade pip wheel
 echo yes|python -m pip install nvidia-cudnn-cu12
@@ -38,5 +37,4 @@ echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 t
 
 call python -m pip install -r requirements.txt --no-warn-script-location
 
-call python ezvtb_rt_interface.py
 pause
