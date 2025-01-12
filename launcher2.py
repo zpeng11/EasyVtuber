@@ -9,7 +9,7 @@ import sys
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 p = None
 cache_simplify_map = {
-    'OFF':0,
+    'Off':0,
     'Low':1,
     'Medium':2,
     'High':3,
@@ -20,7 +20,7 @@ cache_simplify_map = {
 
 
 cache_simplify_quality_map = {
-    'OFF':100,
+    'Off':100,
     'Low':99,
     'Medium':95,
     'High':90,
@@ -218,24 +218,24 @@ class LauncherPanel(wx.Panel):
                   choices=['Seperable Half', 'Seperable Full', 'Standard Half', 'Standard Full'],
                   mapping=['seperable_half', 'seperable_full', 'standard_half', 'standard_full'])
         addOption('ram_cache_size', title='RAM Cache Size', desc='分配内存缓存大小\n用于存储最终运算结果',
-                  choices=['OFF', '1GB', '2GB', '4GB', '8GB', '16GB'],
+                  choices=['Off', '1GB', '2GB', '4GB', '8GB', '16GB'],
                   mapping=['0b', '1gb', '2gb', '4gb', '8gb', '16gb'])
         addOption('vram_cache_size', title='VRAM Cache Size', desc='分配显存缓存大小\n用于存储中间结果',
-                  choices=['OFF', '1GB', '2GB', '4GB', '8GB', '16GB'],
+                  choices=['Off', '1GB', '2GB', '4GB', '8GB', '16GB'],
                   mapping=['0b', '1gb', '2gb', '4gb', '8gb', '16gb'])
         addOption('cache_simplify', title='Input Simplify',
                   desc='设置输入简化级别\n输入越简化，缓存命中率越高，动作越不平滑',
-                  choices=['OFF', 'Low', 'Medium', 'High', 'Higher', 'Highest', 'Gaming'])
+                  choices=['Off', 'Low', 'Medium', 'High', 'Higher', 'Highest', 'Gaming'])
         addOption('cache_compression', title='JPEG Compression',
                   desc='设置内存缓存压缩等级\n压缩等级越高，缓存命中率越高，输出质量越差',
-                  choices=['OFF', 'Low', 'Medium', 'High'])
+                  choices=['Off', 'Low', 'Medium', 'High'])
 
 
         addOption('sr', title='SuperResolution', desc='选择使用的超分模型',
                   choices=['Off', 'anime4k_x2', 'waifu2x_x2_half', 'real-esrgan_x4_half', 'waifu2x_x2_full',
                            'real-esrgan_x4_full'])
         addOption('interpolation', title='Frame Interpolation', desc='选择使用的补帧模型',
-                  choices=['off', 'x2_half', 'x3_half', 'x4_half', 'x2_full', 'x3_full', 'x4_full'])
+                  choices=['Off', 'x2_half', 'x3_half', 'x4_half', 'x2_full', 'x3_full', 'x4_full'])
 
         addOption('is_extend_movement', title='Extend Movement', desc='基于面捕的XY输入移动、缩放输出图像提升可动性',
                   type=1)
