@@ -6,5 +6,4 @@ call conda env list
 call conda activate ezvtb_rt_venv
 call conda env list
 
-
-pythonw launcher2.py
+python ezvtb_rt_interface.py
