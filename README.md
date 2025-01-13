@@ -18,13 +18,14 @@ Updates:
 * 使用 [TurboJPEG](https://github.com/Dobatymo/turbojpeg-python) 获得成倍缓存命中率提升，在长时间使用上显卡减负效果相当出色。  
 * 使用 [waifu2x](https://github.com/nagadomi/waifu2x) 和 [real-esrgan]() 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）  
 * 更漂亮的 WxPython 新启动器界面，带中文介绍更加简单易用  
+* 添加Spout2 支持输出原生透明通道给OBS
 
 ## Requirements  
 
 ### 硬件  
 
 - 支持FaceID的iPhone（使用ifacialmocap软件，需购买，需要稳定的WIFI连接）或网络摄像头（使用OpenCV）  
-- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用
+- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用， 请参考[性能测试结果](PerformanceTest.md)
 ### 软件
 
 - 本方案在Windows 10上测试可用
