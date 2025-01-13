@@ -21,17 +21,11 @@ SET PATH=%~dp0envs\miniconda3\Scripts;%PATH%
 call activate
 call conda env list
 call conda update -y --all
-call conda create -y -n ezvtb_rt_venv python=3.10
+call conda create -n ezvtb_rt_venv -c conda-forge conda-pack pycuda python=3.10 -y
 call conda activate ezvtb_rt_venv
 call conda env list
 
-call conda install -y pycuda -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ 
-
-call conda install -y conda-pack -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ 
-
-call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded --format no-archive
-
-call deactivate
+call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded --format zip
 
 @RD /S /Q %~dp0envs\miniconda3
 SET PATH=%~dp0envs\python_embeddeds;%~dp0envs\python_embeddeds\Scripts;%PATH%
@@ -43,5 +37,4 @@ echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 t
 
 call python -m pip install -r requirements.txt --no-warn-script-location -i https://mirrors.aliyun.com/pypi/simple/
 
-@REM Up to here you can use the envs\python_embedded.zip and envs\wheels to reconstruct a new environment
 pause
