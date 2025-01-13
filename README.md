@@ -38,32 +38,14 @@ Updates:
 * [夸克网盘](https://pan.quark.cn/s/b61ad5315f59)  
 * 磁力链接 magnet:?xt=urn:btih:31ea4e070603b02a2ffd38418116b08b74551722
 * [谷歌网盘](https://drive.google.com/drive/folders/1cYj18EfVQ2Cl348_rkCu_fgaasHTI_io?usp=drive_link)  
-### 下载并安装CUDAToolkit
-前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
-若安装成功并重启可开启命令行工具验证出现类似如下结果：  
-```
-C:\Users\Eleven>nvidia-smi
-Thu Jan  9 22:02:29 2025
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 556.12                 Driver Version: 556.12         CUDA Version: 12.5     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA GeForce GTX 1660 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
-| 32%   34C    P8             10W /  125W |     569MiB /   6144MiB |      1%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-........
-```
-或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 
 ### 安装Spout2 OBS插件(可选)
 安装整合包附带的 `OBS_Spout2_Plugin_Install_v1.8.exe`， 安装包来自 https://github.com/Off-World-Live/obs-spout2-plugin 项目，可以提供透明通道给OBS。
 
-### 启动项目
-双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，首次启动将会花约5分钟安装pip资源， 若是英伟达用户将会开始TensorRT构建，额外需要>20min时间(取决于显卡)，结束后可以大幅提升运行速度，构建的开头和结束输出如下。  
+### 构建TensorRT模型（N卡专用，可选）  
+双击`02.构建TensorRT模型（N卡使用）.bat`，若是英伟达用户将会开始TensorRT构建  
+额外需要>20min时间(取决于显卡)，结束后可以大幅提升运行速度（可简单理解为玩游戏之前编译着色器，和每个人显卡有关）  
+构建的开头和结束输出如下。  
 ```
 Start testing if TensorRT works on this machine
   0%|                                                                                           | 0/38 [00:00<?, ?it/s][01/09/2025-22:36:52] [TRT] [I] [MemUsageChange] Init CUDA: CPU +89, GPU +0, now: CPU 6758, GPU 1009 (MiB)
@@ -89,15 +71,35 @@ Start testing if TensorRT works on this machine
 [01/10/2025-21:16:53] [TRT] [I] Completed saving engine
 100%|██████████████████████████████████████████████████████████████████████████████████| 38/38 [46:54<00:00, 74.07s/it]
 ```
-结束所有准备工作将进入启动器，如下图启动：
+
+### 启动项目
+双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动：
 ![](assets/02success.png)   
 之后请移步输入输出自行调节。
 
 ## Installation(科学上网且使用Git)  
 可使用此安装方法对本项目二次开发
 
-### 安装CudaToolkits
-同整合包版本
+### 下载并安装CUDAToolkit
+前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
+若安装成功并重启可开启命令行工具验证出现类似如下结果：  
+```
+C:\Users\Eleven>nvidia-smi
+Thu Jan  9 22:02:29 2025
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 556.12                 Driver Version: 556.12         CUDA Version: 12.5     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce GTX 1660 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
+| 32%   34C    P8             10W /  125W |     569MiB /   6144MiB |      1%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+........
+```
+或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 
 ### 安装Anaconda（可选）
 前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
@@ -154,9 +156,11 @@ python -m pip install -r requirements.txt --no-warn-script-location
 
 ## 输入输出设备  
 #### SPOUT2 OBS插件输出
-目前推荐这个方案，使用透明通道效果最好也最方便。使用前请移步 https://github.com/Off-World-Live/obs-spout2-plugin/releases  安装obs插件，并在obs中选择spout输入设备。
+目前推荐这个方案，使用透明通道效果最好也最方便。实测OBS 31.0.0支持。  
+使用前请移步 https://github.com/Off-World-Live/obs-spout2-plugin/releases  安装OBS插件  
+在OBS中添加源-Spout2捕获-设置，合成模式切换为预乘Alpha，即可自动接收视频输出
 
-#### OBS Virtual Camera
+#### OBS Virtual Camera（Outdated，插件已经转收费无法下载）
 
 UnityCapture存在未查明的性能瓶颈  
 如果你选择自己进行抠像你可以直接输出到obs，如果你需要RGBA支持则需要额外使用一个Shader  
@@ -170,7 +174,7 @@ UnityCapture存在未查明的性能瓶颈
 你可能需要手动调整一下裁剪把右侧的无用画面切掉  
 (看不到着色器滤镜的话就是StreamFX没装好或者OBS不是最新版)
 
-#### UnityCapture  
+#### UnityCapture（Outdated，性能问题）  
 
 如果需要使用透明通道输出，参考 https://github.com/schellingb/UnityCapture#installation 安装好UnityCapture  
 只需要正常走完Install.bat，在OBS里能看到对应的设备（Unity Video Capture）就行  
@@ -195,7 +199,7 @@ https://github.com/emilianavt/OpenSeeFace/releases
 之后保存并双击`run.bat`运行，按照提示选择摄像头、分辨率、帧率，捕获正常的话可以看到输出画面  
 最后在启动器中选择OpenSeeFace输入，或添加启动参数`--osf 127.0.0.1:11573`即可接入OpenSeeFace
 
-## Run
+## 脱离启动器运行本体  
 
 `main.py` 的完全体运行命令请参考 `02B.启动器（调试输出）.bat` 的输出以及 `args.py`。 以下为部分基础参数
 
