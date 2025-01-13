@@ -25,10 +25,10 @@ call conda create -n ezvtb_rt_venv -c conda-forge conda-pack pycuda python=3.10 
 call conda activate ezvtb_rt_venv
 call conda env list
 
-call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded --format zip
+call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded --format no-archive
 
 @RD /S /Q %~dp0envs\miniconda3
-SET PATH=%~dp0envs\python_embeddeds;%~dp0envs\python_embeddeds\Scripts;%PATH%
+SET PATH=%~dp0envs\python_embedded;%~dp0envs\python_embedded\Scripts;%PATH%
 
 call python -m pip install --upgrade pip wheel -i https://mirrors.aliyun.com/pypi/simple/
 echo yes|python -m pip install nvidia-cudnn-cu12 -i https://mirrors.aliyun.com/pypi/simple/
