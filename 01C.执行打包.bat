@@ -29,11 +29,19 @@ call conda install -y pycuda -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cl
 
 call conda install -y conda-pack -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ 
 
-call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded.zip --format zip
+call conda-pack -n ezvtb_rt_venv -o %~dp0envs\python_embedded --format no-archive
 
-call python -m pip wheel nvidia-cudnn-cu12 -i https://mirrors.aliyun.com/pypi/simple/ -w envs\wheels
-call pip wheel tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com -w envs\wheels
-call python -m pip wheel -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ -w envs\wheels
+call deactivate
+
+@RD /S /Q %~dp0envs\miniconda3
+SET PATH=%~dp0envs\python_embeddeds;%~dp0envs\python_embeddeds\Scripts;%PATH%
+
+call python -m pip install --upgrade pip wheel -i https://mirrors.aliyun.com/pypi/simple/
+echo yes|python -m pip install nvidia-cudnn-cu12 -i https://mirrors.aliyun.com/pypi/simple/
+
+echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
+
+call python -m pip install -r requirements.txt --no-warn-script-location -i https://mirrors.aliyun.com/pypi/simple/
 
 @REM Up to here you can use the envs\python_embedded.zip and envs\wheels to reconstruct a new environment
 pause
