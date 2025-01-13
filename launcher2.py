@@ -231,7 +231,7 @@ class LauncherPanel(wx.Panel):
                   choices=['Off', 'Low', 'Medium', 'High'])
 
 
-        addOption('sr', title='SuperResolution', desc='选择使用的超分模型',
+        addOption('sr', title='SuperResolution', desc='选择使用的超分模型\n由于性能原因，real-esrgan会进行裁切',
                   choices=['Off', 'anime4k_x2', 'waifu2x_x2_half', 'real-esrgan_x4_half', 'waifu2x_x2_full',
                            'real-esrgan_x4_full'])
         addOption('interpolation', title='Frame Interpolation', desc='选择使用的补帧模型',

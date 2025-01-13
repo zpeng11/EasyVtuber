@@ -6,7 +6,6 @@ call conda env list
 call conda activate ezvtb_rt_venv
 call conda env list
 
-IF not EXIST %~dp0launcher.json call python ezvtb_rt_interface.py
 
 python launcher2.py
 
