@@ -388,7 +388,7 @@ class LauncherPanel(wx.Panel):
                 run_args.append(args['vram_cache_size'])
 
             if args['interpolation'] is not None:
-                if not 'off' == args['interpolation']:
+                if not 'Off' == args['interpolation']:
                     run_args.append('--use_interpolation')
                 if 'half' in args['interpolation']:
                     run_args.append('--interpolation_half')
