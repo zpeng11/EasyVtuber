@@ -43,9 +43,11 @@ Updates:
 安装整合包附带的 `OBS_Spout2_Plugin_Install_v1.8.exe`， 安装包来自 https://github.com/Off-World-Live/obs-spout2-plugin 项目，可以提供透明通道给OBS。
 
 ### 构建TensorRT模型（N卡专用，可选）  
-双击`02.构建TensorRT模型（N卡使用）.bat`，若是英伟达用户将会开始TensorRT构建  
+如果需要使用TensorRT，首先通过`00A.CudaToolkits（N卡开启TensorRT使用）.url`下载并安装Cuda Toolkits。  
+成功安装后，你应该能通过命令行运行`nvcc -V`查看到nvcc的版本。  
+之后双击`02.构建TensorRT模型（N卡使用）.bat`，若是英伟达用户将会开始TensorRT构建  
 额外需要>20min时间(取决于显卡)，结束后可以大幅提升运行速度（可简单理解为玩游戏之前编译着色器，和每个人显卡有关）  
-构建的开头和结束输出如下。  
+构建的开头和结束输出如下：  
 ```
 Start testing if TensorRT works on this machine
   0%|                                                                                           | 0/38 [00:00<?, ?it/s][01/09/2025-22:36:52] [TRT] [I] [MemUsageChange] Init CUDA: CPU +89, GPU +0, now: CPU 6758, GPU 1009 (MiB)
