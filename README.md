@@ -43,7 +43,8 @@ Updates:
 安装整合包附带的 `OBS_Spout2_Plugin_Install_v1.8.exe`， 安装包来自 https://github.com/Off-World-Live/obs-spout2-plugin 项目，可以提供透明通道给OBS。
 
 ### 构建TensorRT模型（N卡专用，可选）  
-如果需要使用TensorRT，首先通过`00A.CudaToolkits（N卡开启TensorRT使用）.url`下载并安装Cuda Toolkits。  
+如果需要使用TensorRT，首先通过`00A.CudaToolkits（N卡开启TensorRT使用）.url`  
+前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
 成功安装后，你应该能通过命令行运行`nvcc -V`查看到nvcc的版本。  
 之后双击`02.构建TensorRT模型（N卡使用）.bat`，若是英伟达用户将会开始TensorRT构建  
 额外需要>20min时间(取决于显卡)，结束后可以大幅提升运行速度（可简单理解为玩游戏之前编译着色器，和每个人显卡有关）  
@@ -81,27 +82,6 @@ Start testing if TensorRT works on this machine
 
 ## Installation(科学上网且使用Git)  
 可使用此安装方法对本项目二次开发
-
-### 下载并安装CUDAToolkit
-前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
-若安装成功并重启可开启命令行工具验证出现类似如下结果：  
-```
-C:\Users\Eleven>nvidia-smi
-Thu Jan  9 22:02:29 2025
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 556.12                 Driver Version: 556.12         CUDA Version: 12.5     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA GeForce GTX 1660 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
-| 32%   34C    P8             10W /  125W |     569MiB /   6144MiB |      1%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-........
-```
-或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 
 ### 安装Anaconda（可选）
 前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
