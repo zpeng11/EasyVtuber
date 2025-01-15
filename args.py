@@ -64,6 +64,8 @@ if args.cache is not None:
     args.max_cache_len=convert_to_byte(args.cache)/pow(1024, 3) #In gigabytes
 else:
     args.max_cache_len=0
+if args.max_cache_len == 0:
+    args.use_cacher = False
 if args.gpu_cache is not None:
     args.max_gpu_cache_len=convert_to_byte(args.gpu_cache)/pow(1024, 3) #In gigabytes
 else:

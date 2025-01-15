@@ -206,7 +206,7 @@ class LauncherPanel(wx.Panel):
                   choices=['Spout2', 'OBS VirtualCam', 'UnityCapture', 'Debug Output'],
                   mapping=[3, 1, 0, 2])
 
-        addOption('device_id', title='GPU Device', desc='选择需要使用的计算设备', choices=['0'])
+        addOption('device_id', title='GPU Device', desc='选择需要使用的计算设备(默认0)', choices=['0','1','2','3'])
         addOption('use_tensorrt', title='TensorRT',
                   desc='开启TensorRT后可使用预编译模型\n进一步提升性能（仅NVIDIA显卡支持）', type=1)
 
@@ -388,7 +388,7 @@ class LauncherPanel(wx.Panel):
                 run_args.append(args['vram_cache_size'])
 
             if args['interpolation'] is not None:
-                if not 'off' == args['interpolation']:
+                if not 'Off' == args['interpolation']:
                     run_args.append('--use_interpolation')
                 if 'half' in args['interpolation']:
                     run_args.append('--interpolation_half')

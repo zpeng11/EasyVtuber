@@ -16,15 +16,16 @@ Updates:
 * 为A卡和I卡提供DirectML支持，人人都能玩。  
 * 引入[RIFE](https://github.com/hzwer/ECCV2022-RIFE)模型进行插帧，极限帧数提升达到50%-100%，配合锁帧可以有效降低使用占用。  
 * 使用 [TurboJPEG](https://github.com/Dobatymo/turbojpeg-python) 获得成倍缓存命中率提升，在长时间使用上显卡减负效果相当出色。  
-* 使用 [waifu2x](https://github.com/nagadomi/waifu2x) 和 [real-esrgan]() 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）  
+* 使用 [waifu2x](https://github.com/nagadomi/waifu2x) 和 [real-esrgan](https://github.com/xinntao/Real-ESRGAN) 项目带来的输出超分辨率，对比anime4k效果提升显著（也使用更多gpu占用）  
 * 更漂亮的 WxPython 新启动器界面，带中文介绍更加简单易用  
+* 添加Spout2 支持输出原生透明通道给OBS
 
 ## Requirements  
 
 ### 硬件  
 
 - 支持FaceID的iPhone（使用ifacialmocap软件，需购买，需要稳定的WIFI连接）或网络摄像头（使用OpenCV）  
-- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用
+- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用，某些性能强的核显也可尝试，请参考[性能测试结果](PerformanceTest.md)
 ### 软件
 
 - 本方案在Windows 10上测试可用
@@ -76,7 +77,7 @@ Start testing if TensorRT works on this machine
 ```
 
 ### 启动项目
-双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动：
+双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动（可在上一步构建同时启动，将TensorRT去除勾选即可）：
 ![](assets/02success.png)   
 之后请移步输入输出自行调节。
 
@@ -89,7 +90,7 @@ Start testing if TensorRT works on this machine
 C:\Users\Eleven>conda --version
 conda 24.11.3
 ```
-以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步，脚本会自动安装miniconda。
+以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步，`01X.构建运行环境（XX源）.bat`脚本会自动安装miniconda。
 
 ### 克隆项目和子项目
 ```
@@ -100,12 +101,13 @@ git submodule update --recursive --remote
 ```
 
 ### 安装环境
-双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
+根据网络环境双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
 或可以用如下命令手动创建：   
 ```
 conda create -y -n ezvtb_rt_venv python=3.10
 conda activate ezvtb_rt_venv
+call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
 conda install -y conda-forge::pycuda
 python -m pip install --upgrade pip wheel
 python -m pip install nvidia-cudnn-cu12
@@ -128,13 +130,12 @@ python -m pip install -r requirements.txt --no-warn-script-location
 
 ### 运行启动器  
 在Conda环境中执行以下命令  
-`python launcher.py`  
+`python launcher2.py`  
 
-### 错误排查
+### 环境错误排查
 当运行TensorRT构建或启动器出现错误时，请参考如下可能性：
 1. 环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用整合包。
-2. nvcc编译器没找到，即CudaToolkit安装有误，双击 `00.检查安装CudaToolkits.bat` 来验证
-3. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
+2. 英伟达显卡但计算架构低于7.5（10系以及之前）不支持TensorRT
 
 ## 输入输出设备  
 #### SPOUT2 OBS插件输出
@@ -174,7 +175,7 @@ https://www.ifacialmocap.com/download/
 #### OpenSeeFace  
 
 https://github.com/emilianavt/OpenSeeFace/releases  
-直接下载最新版本的Release包并解压  
+直接下载最新版本的Release包并解压，或使用整合包附带的压缩包  
 之后进入解压目录的Binary文件夹  
 右键编辑`run.bat`，在倒数第二行运行facetracker的命令后加上`--model 4`，切换到模型4可以wink  
 `facetracker -c %cameraNum% -F %fps% -D %dcaps% -v 3 -P 1 --discard-after 0 --scan-every 0 --no-3d-adapt 1 --max-feature-updates 900 --model 4`（仅供参考）  
