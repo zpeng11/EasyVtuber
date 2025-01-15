@@ -8,9 +8,9 @@ import mediapipe as mp
 from PIL import Image
 
 import tha2.poser.modes.mode_20_wx
-from models import TalkingAnimeLight, TalkingAnime3
 from pose import get_pose
 from utils import preprocessing_image, postprocessing_image
+from ezvtb_rt_interface import get_core
 
 import errno
 import json
@@ -22,7 +22,7 @@ import math
 from pynput.mouse import Button, Controller
 import re
 from collections import OrderedDict
-from multiprocessing import Value, Process, Queue
+from multiprocessing import Value, Process, Queue, shared_memory
 
 from pyanime4k import ac
 
@@ -34,6 +34,9 @@ from tha3.util import torch_linear_to_srgb, resize_PIL_image, extract_PIL_image_
     extract_pytorch_image_from_PIL_image
 
 import collections
+from PySpout import SpoutSender
+from OpenGL.GL import GL_RGBA
+
 
 
 def convert_linear_to_srgb(image: torch.Tensor) -> torch.Tensor:
@@ -47,13 +50,22 @@ class FPS:
 
     def __call__(self):
         self.frametimestamps.append(time.time())
+        return self.view()
+        
+    def view(self):
         if len(self.frametimestamps) > 1:
-            return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0])
+            return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0] + 1e-10)
         else:
             return 0.0
 
+    def last(self):
+        if len(self.frametimestamps):
+            return self.frametimestamps[-1]
+        else:
+            return time.time()
 
-device = torch.device('cuda') if torch.cuda.is_available() and not args.skip_model else torch.device('cpu')
+
+device = torch.device('cpu')
 
 
 def create_default_blender_data():
@@ -325,42 +337,56 @@ class ModelClientProcess(Process):
         self.input_image = input_image
         self.output_queue = Queue()
         self.input_queue = Queue()
+        self.shms = [shared_memory.SharedMemory(create=True, size=args.model_output_size * args.model_output_size * 4) for _ in range(args.interpolation_scale if args.use_interpolation else 1)]
         self.model_fps_number = Value('f', 0.0)
         self.gpu_fps_number = Value('f', 0.0)
         self.cache_hit_ratio = Value('f', 0.0)
         self.gpu_cache_hit_ratio = Value('f', 0.0)
 
     def run(self):
-        model = None
-        if not args.skip_model:
-            model = TalkingAnime3().to(device)
-            model = model.eval()
-            model = model
-            print("Pretrained Model Loaded")
+        self.model = get_core(device_id = args.device_id,
+                              use_tensorrt = args.use_tensorrt,
 
-        eyebrow_vector = torch.empty(1, 12, dtype=torch.half if args.model.endswith('half') else torch.float)
-        mouth_eye_vector = torch.empty(1, 27, dtype=torch.half if args.model.endswith('half') else torch.float)
-        pose_vector = torch.empty(1, 6, dtype=torch.half if args.model.endswith('half') else torch.float)
+                              model_seperable = args.model_seperable,
+                              model_half=args.model_half, 
+                              model_cache=args.model_cache, 
+                              model_vram_cache=args.model_vram_cache,
+                              model_cache_size=args.max_gpu_cache_len, 
+                              model_use_eyebrow=args.eyebrow,
 
-        input_image = self.input_image.to(device)
-        eyebrow_vector = eyebrow_vector.to(device)
-        mouth_eye_vector = mouth_eye_vector.to(device)
-        pose_vector = pose_vector.to(device)
+                              use_interpolation=args.use_interpolation,
+                              interpolation_scale=args.interpolation_scale,
+                              interpolation_half=args.interpolation_half,
 
-        model_cache = OrderedDict()
-        tot = 0
-        hit = 0
-        hit_in_a_row = 0
+                              use_cacher=args.use_cacher, 
+                              cacher_quality=args.cacher_quality,
+                              cacher_ram_size=args.max_cache_len, 
+
+                              use_sr = args.use_sr, 
+                              sr_half= args.sr_half, 
+                              sr_x4=args.sr_x4,
+                              sr_noise=args.sr_noise)
+        self.model.setImage(self.input_image)
+        input_pose = np.zeros((1,45), dtype=np.float32)
+
+        self.shared_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
+
         model_fps = FPS()
-        gpu_fps = FPS()
+
+        last_process_time = time.time()
         while True:
             model_input = None
             try:
+                model_input = self.input_queue.get(block=True, timeout=1.0) # Save cpu from infinite loop
                 while not self.input_queue.empty():
                     model_input = self.input_queue.get_nowait()
             except queue.Empty:
                 continue
             if model_input is None: continue
+            frame_interval = (1 / args.frame_rate_limit) if not args.use_interpolation else (1 / args.frame_rate_limit * args.interpolation_scale)
+            now = time.time()
+            if now < frame_interval + last_process_time - 0.005: continue #
+            last_process_time = now
             simplify_arr = [1000] * ifm_converter.pose_size
             if args.simplify >= 1:
                 simplify_arr = [200] * ifm_converter.pose_size
@@ -465,62 +491,36 @@ class ModelClientProcess(Process):
             for i in range(0, len(simplify_arr)):
                 if simplify_arr[i] > 0:
                     model_input[i] = round(model_input[i] * simplify_arr[i]) / simplify_arr[i]
-            input_hash = hash(tuple(model_input))
-            cached = model_cache.get(input_hash)
-            tot += 1
-            eyebrow_vector_c = [0.0] * 12
-            mouth_eye_vector_c = [0.0] * 27
-            if cached is not None and hit_in_a_row < self.model_fps_number.value:
-                self.output_queue.put_nowait(cached)
-                model_cache.move_to_end(input_hash)
-                hit += 1
-                hit_in_a_row += 1
-            else:
-                hit_in_a_row = 0
-                if args.perf == 'model':
-                    tic = time.perf_counter()
-                if args.eyebrow:
-                    for i in range(12):
-                        eyebrow_vector[0, i] = model_input[i]
-                        eyebrow_vector_c[i] = model_input[i]
-                for i in range(27):
-                    mouth_eye_vector[0, i] = model_input[i + 12]
-                    mouth_eye_vector_c[i] = model_input[i + 12]
-                for i in range(6):
-                    pose_vector[0, i] = model_input[i + 27 + 12]
-                if model is None:
-                    output_image = input_image
-                else:
-                    output_image = model(input_image, mouth_eye_vector, pose_vector, eyebrow_vector, mouth_eye_vector_c,
-                                         eyebrow_vector_c,
-                                         self.gpu_cache_hit_ratio)
-                if args.perf == 'model':
-                    torch.cuda.synchronize()
-                    print("model", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
-                postprocessed_image = output_image[0].float()
-                if args.perf == 'model':
-                    print("cpu()", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
-                postprocessed_image = convert_linear_to_srgb((postprocessed_image + 1.0) / 2.0)
-                c, h, w = postprocessed_image.shape
-                postprocessed_image = 255.0 * torch.transpose(postprocessed_image.reshape(c, h * w), 0, 1).reshape(h, w,
-                                                                                                                   c)
-                postprocessed_image = postprocessed_image.byte().detach().cpu().numpy()
-                if args.perf == 'model':
-                    print("postprocess", (time.perf_counter() - tic) * 1000)
-                    tic = time.perf_counter()
 
-                self.output_queue.put_nowait(postprocessed_image)
-                if args.debug:
-                    self.gpu_fps_number.value = gpu_fps()
-                if args.max_cache_len > 0:
-                    model_cache[input_hash] = postprocessed_image
-                    if len(model_cache) > args.max_cache_len:
-                        model_cache.popitem(last=False)
+            if args.perf == 'model':
+                tic = time.perf_counter()
+            if args.eyebrow:
+                for i in range(12):
+                    input_pose[0, i] = model_input[i]
+            for i in range(27):
+                input_pose[0, i + 12] = model_input[i + 12]
+            for i in range(6):
+                input_pose[0, i + 12 + 27] = model_input[i + 27 + 12]
+
+            output_images = self.model.inference(input_pose)
+            
+            if args.perf == 'model':
+                print("postprocess", (time.perf_counter() - tic) * 1000)
+                tic = time.perf_counter()
+
+            for i in range(len(self.shared_nps)):
+                np.copyto(self.shared_nps[i], output_images[i])
+            self.output_queue.put_nowait(True)
+
             if args.debug:
                 self.model_fps_number.value = model_fps()
-                self.cache_hit_ratio.value = hit / tot
+                if self.model.cacher is not None:
+                    self.cache_hit_ratio.value = self.model.cacher.hits / (self.model.cacher.hits + self.model.cacher.miss + 1)
+                try:
+                    if args.use_tensorrt and args.model_cache and args.model_vram_cache:
+                        self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
+                except:
+                    pass
 
 
 @torch.no_grad()
@@ -535,12 +535,8 @@ def main():
             y = i // IMG_WIDTH
             x = i % IMG_WIDTH
             img.putpixel((x, y), (0, 0, 0, 0))
-    input_image = preprocessing_image(img.crop((0, 0, IMG_WIDTH, IMG_WIDTH)))
-    if args.model.endswith('half'):
-        input_image = torch.from_numpy(input_image).half() * 2.0 - 1
-    else:
-        input_image = torch.from_numpy(input_image).float() * 2.0 - 1
-    input_image = input_image.unsqueeze(0)
+    input_image = np.array(img.crop((0, 0, IMG_WIDTH, IMG_WIDTH)))
+    input_image = cv2.cvtColor(input_image, cv2.COLOR_RGBA2BGRA)
     extra_image = None
     if img.size[1] > IMG_WIDTH:
         extra_image = np.array(img.crop((0, IMG_WIDTH, img.size[0], img.size[1])))
@@ -585,6 +581,7 @@ def main():
 
     facemesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True)
 
+
     if args.output_webcam:
         cam_scale = 1
         cam_width_scale = 1
@@ -592,13 +589,18 @@ def main():
             cam_scale = 2
         if args.alpha_split:
             cam_width_scale = 2
-        cam = pyvirtualcam.Camera(width=args.output_w * cam_scale * cam_width_scale, height=args.output_h * cam_scale,
-                                  fps=60,
-                                  backend=args.output_webcam,
-                                  fmt=
-                                  {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
-                                      args.output_webcam])
-        print(f'Using virtual camera: {cam.device}')
+
+        if args.output_webcam == 'spout':
+            # Create the sender
+            sender = SpoutSender("EasyVtuber", args.model_output_size * cam_scale * cam_width_scale, args.model_output_size * cam_scale, GL_RGBA)
+        else:
+            cam = pyvirtualcam.Camera(width=args.model_output_size * cam_scale * cam_width_scale, height=args.model_output_size * cam_scale,
+                                      fps=60,
+                                      backend=args.output_webcam,
+                                      fmt=
+                                      {'unitycapture': pyvirtualcam.PixelFormat.RGBA, 'obs': pyvirtualcam.PixelFormat.RGB}[
+                                          args.output_webcam])
+            print(f'Using virtual camera: {cam.device}')
 
     a = None
 
@@ -642,6 +644,10 @@ def main():
     model_process = ModelClientProcess(input_image)
     model_process.daemon = True
     model_process.start()
+    model_output_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
+    model_result_read_ptr = 0
+    model_return_fps = FPS(5)
+    need_a_copy = True
 
     print("Ready. Close this console to exit.")
 
@@ -855,30 +861,35 @@ def main():
         model_input_arr.extend(mouth_eye_vector_c)
         model_input_arr.extend(pose_vector_c)
 
-        model_process.input_queue.put_nowait(model_input_arr)
-
-        has_model_output = 0
-        try:
-            new_model_output = model_output
-            while not model_process.output_queue.empty():
-                has_model_output += 1
-                new_model_output = model_process.output_queue.get_nowait()
-            model_output = new_model_output
-        except queue.Empty:
-            pass
-        if model_output is None:
-            time.sleep(1)
-            continue
-        # print(has_model_output)
-        # should_output=should_output or has_model_output
-        # if not should_output:
-        #     continue
-
-        postprocessed_image = model_output
-
         if args.perf == 'main':
             print('===')
             print("input", time.perf_counter() - tic)
+            tic = time.perf_counter()
+        model_process.input_queue.put_nowait(model_input_arr)
+
+
+
+        try:
+            while not model_process.output_queue.empty():
+                model_process.output_queue.get_nowait()
+                model_result_read_ptr = 0
+                model_return_fps()
+                need_a_copy = True
+        except queue.Empty:
+            pass
+
+        if need_a_copy:
+            model_output = model_output_nps[model_result_read_ptr].copy()
+            need_a_copy = False
+        interval = 1 / (model_return_fps.view()+ 1e-10) / len(model_output_nps) * 0.8
+        if model_result_read_ptr + 1 < len(model_output_nps) and time.time() >= ((model_result_read_ptr + 1) * interval + model_return_fps.last()):
+            model_result_read_ptr += 1
+            need_a_copy = True
+
+
+        postprocessed_image = model_output
+        if args.perf == 'main':
+            print("Compute", time.perf_counter() - tic)
             tic = time.perf_counter()
 
         if extra_image is not None:
@@ -895,17 +906,19 @@ def main():
             dy = -position_vector[1] * 600 * k_scale * args.extend_movement
         if args.bongo:
             rotate_angle -= 5
-        rm = cv2.getRotationMatrix2D((IMG_WIDTH / 2, IMG_WIDTH / 2), rotate_angle, k_scale)
-        rm[0, 2] += dx + args.output_w / 2 - IMG_WIDTH / 2
-        rm[1, 2] += dy + args.output_h / 2 - IMG_WIDTH / 2
+        
+        rm = cv2.getRotationMatrix2D((args.model_output_size / 2, args.model_output_size / 2), rotate_angle, k_scale)
+        rm[0, 2] += dx + args.model_output_size / 2 - args.model_output_size / 2
+        rm[1, 2] += dy + args.model_output_size / 2 - args.model_output_size / 2
+
 
         postprocessed_image = cv2.warpAffine(
             postprocessed_image,
             rm,
-            (args.output_w, args.output_h))
+            (args.model_output_size, args.model_output_size))
 
         if args.perf == 'main':
-            print("extendmovement", (time.perf_counter() - tic) * 1000)
+            print("postprocess", (time.perf_counter() - tic) * 1000)
             tic = time.perf_counter()
 
         output_fps_number = output_fps()
@@ -916,38 +929,35 @@ def main():
 
             # a.load_image_from_numpy(cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2RGB), input_type=ac.AC_INPUT_RGB)
             # img = cv2.imread("character/test41.png")
-            img1 = cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2BGR)
+            img1 = cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2BGR)
             # a.load_image_from_numpy(img, input_type=ac.AC_INPUT_BGR)
             a.load_image_from_numpy(img1, input_type=ac.AC_INPUT_BGR)
             a.process()
             postprocessed_image = a.save_image_to_numpy()
             postprocessed_image = cv2.merge((postprocessed_image, alpha_channel))
-            postprocessed_image = cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2RGBA)
             if args.perf == 'main':
                 print("anime4k", (time.perf_counter() - tic) * 1000)
                 tic = time.perf_counter()
         if args.alpha_split:
             alpha_image = cv2.merge(
                 [postprocessed_image[:, :, 3], postprocessed_image[:, :, 3], postprocessed_image[:, :, 3]])
-            alpha_image = cv2.cvtColor(alpha_image, cv2.COLOR_RGB2RGBA)
+            alpha_image = cv2.cvtColor(alpha_image, cv2.COLOR_BGR2BGRA)
             postprocessed_image = cv2.hconcat([postprocessed_image, alpha_image])
 
         if args.debug:
-            output_frame = cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2BGRA)
+            if args.use_sr:
+                time.sleep(0.000001) # Opencv is using different strategy when putting 512x512 and 1024x1024 image to imshow, 
+                                    # in a way that 1024x1024 is much faster than 512x512 14msvs0.2ms(maybe using zero-copy?) so when using SR, add a delay to prevent overan
+                                    # Due to windows system limitation this actually sleep 16ms
+            output_frame = postprocessed_image
             # resized_frame = cv2.resize(output_frame, (np.min(debug_image.shape[:2]), np.min(debug_image.shape[:2])))
             # output_frame = np.concatenate([debug_image, resized_frame], axis=1)
             cv2.putText(output_frame, str('OUT_FPS:%.1f' % output_fps_number), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
                         (0, 255, 0), 1)
-            if args.max_cache_len > 0:
-                cv2.putText(output_frame, str(
-                    'GPU_FPS:%.1f / %.1f' % (model_process.model_fps_number.value, model_process.gpu_fps_number.value)),
-                            (0, 32),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-            else:
-                cv2.putText(output_frame, str(
-                    'GPU_FPS:%.1f' % (model_process.model_fps_number.value)),
-                            (0, 32),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+            cv2.putText(output_frame, str(
+                'GPU_FPS:%.1f' % (model_process.model_fps_number.value if not args.use_interpolation else model_process.model_fps_number.value * args.interpolation_scale)),
+                        (0, 32),
+                        cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
             if args.ifm is not None:
                 cv2.putText(output_frame, str('IFM_FPS:%.1f' % client_process.ifm_fps_number.value), (0, 48),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
@@ -955,7 +965,7 @@ def main():
                 cv2.putText(output_frame, str('MEMCACHED:%.1f%%' % (model_process.cache_hit_ratio.value * 100)),
                             (0, 64),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-            if args.max_gpu_cache_len > 0:
+            if args.max_gpu_cache_len > 0.0:
                 cv2.putText(output_frame, str('GPUCACHED:%.1f%%' % (model_process.gpu_cache_hit_ratio.value * 100)),
                             (0, 80),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
@@ -967,10 +977,14 @@ def main():
             # result_image[720 - 512:, 1280 // 2 - 256:1280 // 2 + 256] = cv2.resize(
             #     cv2.cvtColor(postprocessing_image(output_image.cpu()), cv2.COLOR_RGBA2RGB), (512, 512))
             result_image = postprocessed_image
-            if args.output_webcam == 'obs':
-                result_image = cv2.cvtColor(result_image, cv2.COLOR_RGBA2RGB)
-            cam.send(result_image)
-            cam.sleep_until_next_frame()
+            if args.output_webcam == 'spout':
+                sender.send_image(cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2RGBA),False)
+                time.sleep(0.000001)
+            else:
+                if args.output_webcam == 'obs':
+                    result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2RGB)
+                cam.send(result_image)
+                cam.sleep_until_next_frame()
         if args.perf == 'main':
             print("output", (time.perf_counter() - tic) * 1000)
             tic = time.perf_counter()

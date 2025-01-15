@@ -1,2 +1,10 @@
 @echo off
-bin\pythonw.exe launcher.py
+cd /D "%~dp0"
+IF EXIST %~dp0envs\miniconda3\Scripts SET PATH=%~dp0envs\miniconda3\Scripts;%PATH%
+call activate
+call conda env list
+call conda activate ezvtb_rt_venv
+call conda env list
+
+
+pythonw launcher2.py
