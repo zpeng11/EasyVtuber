@@ -25,7 +25,7 @@ Updates:
 ### 硬件  
 
 - 支持FaceID的iPhone（使用ifacialmocap软件，需购买，需要稳定的WIFI连接）或网络摄像头（使用OpenCV）  
-- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用， 请参考[性能测试结果](PerformanceTest.md)
+- 任意5年内的游戏级显卡，N卡/A卡/I卡均可使用，某些新款APU的NPU同样可以，请参考[性能测试结果](PerformanceTest.md)
 ### 软件
 
 - 本方案在Windows 10上测试可用
@@ -74,33 +74,12 @@ Start testing if TensorRT works on this machine
 ```
 
 ### 启动项目
-双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动：
+双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动（可在上一步构建同时启动，将TensorRT去除勾选即可）：
 ![](assets/02success.png)   
 之后请移步输入输出自行调节。
 
 ## Installation(科学上网且使用Git)  
 可使用此安装方法对本项目二次开发
-
-### 下载并安装CUDAToolkit
-前往 [英伟达官网](https://developer.nvidia.com/cuda-downloads) 下载并安装`CUDATookit 12`及以上版本。 
-若安装成功并重启可开启命令行工具验证出现类似如下结果：  
-```
-C:\Users\Eleven>nvidia-smi
-Thu Jan  9 22:02:29 2025
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 556.12                 Driver Version: 556.12         CUDA Version: 12.5     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA GeForce GTX 1660 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
-| 32%   34C    P8             10W /  125W |     569MiB /   6144MiB |      1%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-........
-```
-或可以双击 `00.检查安装CudaToolkits.bat` 来验证
 
 ### 安装Anaconda（可选）
 前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
@@ -108,7 +87,7 @@ Thu Jan  9 22:02:29 2025
 C:\Users\Eleven>conda --version
 conda 24.11.3
 ```
-以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步，脚本会自动安装miniconda。
+以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步，`01X.构建运行环境（XX源）.bat`脚本会自动安装miniconda。
 
 ### 克隆项目和子项目
 ```
@@ -119,12 +98,13 @@ git submodule update --recursive --remote
 ```
 
 ### 安装环境
-双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
+根据网络环境双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
 或可以用如下命令手动创建：   
 ```
 conda create -y -n ezvtb_rt_venv python=3.10
 conda activate ezvtb_rt_venv
+call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
 conda install -y conda-forge::pycuda
 python -m pip install --upgrade pip wheel
 python -m pip install nvidia-cudnn-cu12
@@ -147,9 +127,9 @@ python -m pip install -r requirements.txt --no-warn-script-location
 
 ### 运行启动器  
 在Conda环境中执行以下命令  
-`python launcher.py`  
+`python launcher2.py`  
 
-### 错误排查
+### 环境错误排查
 当运行TensorRT构建或启动器出现错误时，请参考如下可能性：
 1. 环境安装有错误（一般运行时缺少库99%的原因都是这个，pip下载并不稳定，各种网络问题都可能导致安装失败），检查源，手动删除`envs`文件夹再试, 对照 [此log](assets/complete_building_log.txt) 为成功案例排查原因。 实在不懂排查请使用整合包。
 2. nvcc编译器没找到，即CudaToolkit安装有误，双击 `00.检查安装CudaToolkits.bat` 来验证

@@ -28,6 +28,7 @@ call conda create -y -n ezvtb_rt_venv python=3.10
 call conda activate ezvtb_rt_venv
 call conda env list
 
+call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
 call conda install -y conda-forge::pycuda 
 
 call python -m pip install --upgrade pip wheel
