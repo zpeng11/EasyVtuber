@@ -37,7 +37,7 @@ Updates:
 ## 整合包版本
 请使用合适方式下载整合包并自行解压：
 * [夸克网盘](https://pan.quark.cn/s/b61ad5315f59)  
-* 磁力链接 magnet:?xt=urn:btih:31ea4e070603b02a2ffd38418116b08b74551722
+* 磁力链接 magnet:?xt=urn:btih:89bee6bc129f2e146f799e6421c0d5ef3bb4b9ff
 * [谷歌网盘](https://drive.google.com/drive/folders/1cYj18EfVQ2Cl348_rkCu_fgaasHTI_io?usp=drive_link)  
 
 ### 安装Spout2 OBS插件(可选)
@@ -76,7 +76,7 @@ Start testing if TensorRT works on this machine
 ### 启动项目
 双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动（可在上一步构建同时启动，将TensorRT去除勾选即可）：
 ![](assets/02success.png)   
-之后请移步输入输出自行调节。
+之后请移步输入输出自行调节。如有问题请先参考本页末的FAQ再提出。
 
 ## Installation(科学上网且使用Git)  
 可使用此安装方法对本项目二次开发
@@ -104,7 +104,7 @@ git submodule update --recursive --remote
 ```
 conda create -y -n ezvtb_rt_venv python=3.10
 conda activate ezvtb_rt_venv
-call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
+conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
 conda install -y conda-forge::pycuda
 python -m pip install --upgrade pip wheel
 python -m pip install nvidia-cudnn-cu12
@@ -136,14 +136,20 @@ python -m pip install -r requirements.txt --no-warn-script-location
 
 ## 输入输出设备  
 #### SPOUT2 OBS插件输出
+
 目前推荐这个方案，使用透明通道效果最好也最方便。实测OBS 31.0.0支持。  
 使用前请移步 https://github.com/Off-World-Live/obs-spout2-plugin/releases  安装OBS插件  
 在OBS中添加源-Spout2捕获-设置，合成模式切换为预乘Alpha，即可自动接收视频输出
 
-#### OBS Virtual Camera（Outdated，插件已经转收费无法下载）
+#### OBS Virtual Camera 无透明通道
 
-UnityCapture存在未查明的性能瓶颈  
-如果你选择自己进行抠像你可以直接输出到obs，如果你需要RGBA支持则需要额外使用一个Shader  
+如果你选择自己进行抠像你可以直接仅输出RGB到OBS  
+使用`视频采集设备`源，设置`滤镜`,  
+在`效果滤镜`添加`色值`并自定义颜色为纯黑色，多尝试调整颜色参数直到抠图合理   
+
+#### OBS Virtual Camera 透明通道（Outdated，透明通道插件已经转收费无法下载） 
+
+如果你需要RGBA支持则需要额外使用一个Shader  
 下载并安装StreamFX https://github.com/Xaymar/obs-StreamFX  
 下载Shader（感谢树根的协助） https://github.com/shugen002/shader/blob/master/merge%20alpha2.hlsl  
 之后，使用`--alpha_split`参数运行
@@ -156,6 +162,7 @@ UnityCapture存在未查明的性能瓶颈
 
 #### UnityCapture（Outdated，性能问题）  
 
+存在未查明的性能瓶颈  
 如果需要使用透明通道输出，参考 https://github.com/schellingb/UnityCapture#installation 安装好UnityCapture  
 只需要正常走完Install.bat，在OBS里能看到对应的设备（Unity Video Capture）就行  
 
@@ -192,3 +199,21 @@ https://github.com/emilianavt/OpenSeeFace/releases
 --output_webcam|字符串|可用值为`obs` `unitycapture`，选择对应的输出种类，不传不输出到摄像头
 --extend_movement|浮点数|使用iOS面捕返回的头部位置，对模型输出图像进一步进行移动和旋转使得上半身可动<br>传入的数值表示移动倍率（建议值为1）
 --output_size|字符串|格式为`256x256`，必须是4的倍数。<br>增大它并不会让图像更清晰，但配合extend_movement会增大可动范围
+
+## FAQ
+
+> Q: 我的电脑是A卡/I卡，去除TensorRT选项后可以运行，但为什么画面扭曲/画面染色/显卡跑不满/显卡跑满但速度慢？  
+
+A卡I卡使用 DirectML，这个框架与显卡厂商的显卡驱动及 Direct12 实现相关，很多算子实现存在数值错误或未实现并行优化被迫降级到cpu运行。方案：1. 将显卡驱动更新至最新，2. 打开调试启动器运行并检查模型或算子是否被降级到cpu实现，3.切换不同模型和精度多尝试。 如有兴趣了解更多请参考[性能测试结果](PerformanceTest.md)末尾对DirectML的思考。
+
+> Q: 我开启超分辨率后，为什么补帧没效果了？
+
+目前的实现中，由于本项目的基础设计和 Python 带来的限制（未来可能优化），补帧和超分只能二选一，开启超分后补帧会自动失效。
+
+> Q: 我开启补帧后为什么在 Spout2 输出中边缘会有些抖动？
+
+此问题来源于封装RIFE插帧模型时基于性能考虑对透明通道的取舍，若对这样的抖动无法接受，请使用 OBS Virtual Camera 无透明通道输出方案。
+
+> Q: 我可以正常运行程序且显卡温度上升风扇在转，但为什么我的任务管理器 GPU 页面里没有显示负载呢？
+
+请在GPU页面中点击`Video Decode`或`Video Processing`按钮可以看到下拉，请对这里的选项挨个尝试找到正确的程序负载，一般在 `cuda` 或 `3D` 或 `Compute_X` 或 `Graphics_X`。
