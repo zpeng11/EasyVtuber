@@ -9,7 +9,7 @@ Fork自 https://github.com/GunwooHan/EasyVtuber
 并且省略了ifacialmocap pc端，通过UDP直连的方式使ios面捕刷新率达到最高60fps，解决了面捕刷新率的瓶颈  
 最后，给EasyVtuber中使用的OBS虚拟摄像头方案增加配套的Shader支持，解锁RGBA输出能力，无需绿背即可直接使用
 
-[视频介绍和安装说明](https://www.bilibili.com/video/BV1uu411r7DR)  
+[视频介绍和安装说明](https://www.bilibili.com/video/BV1rJwgeoE2j)  
 
 Updates:  
 * 使用 https://github.com/zpeng11/ezvtuber-rt/tree/main 项目转换的ONNX模型，实现TensorRT加速以及非N卡支持，在半精度和全精度下均有加速（具体取决于显卡）  
