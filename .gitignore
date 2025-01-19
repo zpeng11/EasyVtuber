@@ -143,3 +143,4 @@ data/
 *.iml
 .idea/
 *.pt
+*.onnx

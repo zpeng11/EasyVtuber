@@ -24,18 +24,12 @@ IF EXIST %~dp0envs\miniconda3\Scripts SET PATH=%~dp0envs\miniconda3\Scripts;%PAT
 call activate
 call conda env list
 call conda update -y --all
-call conda create -y -n ezvtb_rt_venv python=3.10
-call conda activate ezvtb_rt_venv
+call conda create -y -n quantization python=3.10
+call conda activate quantization
 call conda env list
 
-call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
-call conda install -y conda-forge::pycuda 
 
 call python -m pip install --upgrade pip wheel
-echo yes|python -m pip install nvidia-cudnn-cu12
-
-echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
-
 call python -m pip install -r requirements.txt --no-warn-script-location
 
 pause
