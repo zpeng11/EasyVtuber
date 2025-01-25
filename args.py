@@ -74,6 +74,4 @@ if args.output_webcam is None and args.output_dir is None: args.debug = True
 
 args.model_output_size = 1024 if args.use_sr else 512
 
-if args.use_sr and args.use_interpolation:
-    args.use_interpolation = False
 

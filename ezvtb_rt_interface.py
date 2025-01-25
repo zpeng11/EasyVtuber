@@ -24,6 +24,8 @@ else:
 if project_path not in sys.path:
     sys.path.append(project_path)
 
+from ezvtb_rt.common import Core
+
 def get_core(
         #Device setting
         device_id:int = 0, 
@@ -48,7 +50,7 @@ def get_core(
         sr_x4:bool = True,
         sr_half:bool = True,
         sr_noise:int = 1
-        ):
+        ) -> Core:
     support_trt = False
     if use_tensorrt: #Verify tensorrt
         print('Verifying TensorRT')
@@ -92,38 +94,16 @@ def get_core(
     print(f'THA3 Path:{tha_model_dir}')
     print(f'RIFE Path:{rife_model_path}')
     print(f'SR Path:{sr_model_path}')
-
-    cacher = None
-    if use_cacher: #Cacher runs on cpu therefore platform independant
-        from ezvtb_rt.cache import Cacher
-        cacher = Cacher(max_size = cacher_ram_size, cache_quality = cacher_quality, image_size=512)
     
     core = None
-    if use_tensorrt:
-        tha = None
-        if not model_cache:
-            from ezvtb_rt.tha import THACoreSimple
-            tha = THACoreSimple(tha_model_dir)
-        else:
-            if model_vram_cache:
-                from ezvtb_rt.tha import THACoreCachedVRAM
-                tha = THACoreCachedVRAM(tha_model_dir, model_cache_size, model_use_eyebrow)
-            else:
-                from ezvtb_rt.tha import THACoreCachedRAM
-                tha = THACoreCachedRAM(tha_model_dir, model_cache_size, model_use_eyebrow)
-        rife = None
-        if use_interpolation:
-            from ezvtb_rt.rife import RIFECoreLinked
-            rife = RIFECoreLinked(rife_model_path, tha)
-        sr = None
-        if use_sr:
-            from ezvtb_rt.sr import SRLinkTha
-            sr = SRLinkTha(sr_model_path, tha)
-        from ezvtb_rt.core import Core
-        core = Core(tha, cacher, sr, rife)
-    else: #Use directml
-        from ezvtb_rt.core_ort import CoreORT
-        core = CoreORT(tha_model_dir, rife_path = rife_model_path if len(rife_model_path) > 0 else None, sr_path = sr_model_path if len(sr_model_path) > 0 else None, cacher=cacher, device_id=device_id, use_eyebrow = model_use_eyebrow)
+    from ezvtb_rt.core_ort import CoreORT
+    core = CoreORT(tha_model_dir, 
+                   rife_path = rife_model_path if len(rife_model_path) > 0 else None, 
+                   sr_path = sr_model_path if len(sr_model_path) > 0 else None, 
+                   device_id=device_id, 
+                   cache_max_volume=cacher_ram_size, 
+                   cache_quality = cacher_quality,
+                   use_eyebrow = model_use_eyebrow)
 
     return core
     

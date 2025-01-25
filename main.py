@@ -56,7 +56,7 @@ class FPS:
         if len(self.frametimestamps) > 1:
             return len(self.frametimestamps) / (self.frametimestamps[-1] - self.frametimestamps[0] + 1e-10)
         else:
-            return 0.0
+            return args.frame_rate_limit
 
     def last(self):
         if len(self.frametimestamps):
@@ -337,7 +337,7 @@ class ModelClientProcess(Process):
         self.input_image = input_image
         self.output_queue = Queue()
         self.input_queue = Queue()
-        self.shms = [shared_memory.SharedMemory(create=True, size=args.model_output_size * args.model_output_size * 4) for _ in range(args.interpolation_scale if args.use_interpolation else 1)]
+        self.shm = shared_memory.SharedMemory(create=True, size=args.model_output_size * args.model_output_size * 4)
         self.model_fps_number = Value('f', 0.0)
         self.gpu_fps_number = Value('f', 0.0)
         self.cache_hit_ratio = Value('f', 0.0)
@@ -369,147 +369,38 @@ class ModelClientProcess(Process):
         self.model.setImage(self.input_image)
         input_pose = np.zeros((1,45), dtype=np.float32)
 
-        self.shared_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=self.shms[i].buf) for i in range(len(self.shms))]
+        self.shared_np = np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=self.shm.buf) 
 
         model_fps = FPS()
 
         last_process_time = time.time()
+        frame_rate_interval = (1 / args.frame_rate_limit)
+
+        model_input = None
         while True:
-            model_input = None
+            model_average_interval = self.model.averageInterval()
+            target_interval = frame_rate_interval if frame_rate_interval > model_average_interval else model_average_interval
+
+            target_interval = target_interval - (time.time() - last_process_time)
             try:
-                model_input = self.input_queue.get(block=True, timeout=1.0) # Save cpu from infinite loop
+                if target_interval > 0:
+                    model_input = self.input_queue.get(block=True, timeout=target_interval) # Save cpu from infinite loop
                 while not self.input_queue.empty():
                     model_input = self.input_queue.get_nowait()
             except queue.Empty:
-                continue
+                pass
             if model_input is None: continue
-            frame_interval = (1 / args.frame_rate_limit) if not args.use_interpolation else (1 / args.frame_rate_limit * args.interpolation_scale)
-            now = time.time()
-            if now < frame_interval + last_process_time - 0.005: continue #
-            last_process_time = now
-            simplify_arr = [1000] * ifm_converter.pose_size
-            if args.simplify >= 1:
-                simplify_arr = [200] * ifm_converter.pose_size
-                simplify_arr[ifm_converter.eye_wink_left_index] = 50
-                simplify_arr[ifm_converter.eye_wink_right_index] = 50
-                simplify_arr[ifm_converter.eye_happy_wink_left_index] = 50
-                simplify_arr[ifm_converter.eye_happy_wink_right_index] = 50
-                simplify_arr[ifm_converter.eye_surprised_left_index] = 30
-                simplify_arr[ifm_converter.eye_surprised_right_index] = 30
-                simplify_arr[ifm_converter.iris_rotation_x_index] = 25
-                simplify_arr[ifm_converter.iris_rotation_y_index] = 25
-                simplify_arr[ifm_converter.eye_raised_lower_eyelid_left_index] = 10
-                simplify_arr[ifm_converter.eye_raised_lower_eyelid_right_index] = 10
-                simplify_arr[ifm_converter.mouth_lowered_corner_left_index] = 5
-                simplify_arr[ifm_converter.mouth_lowered_corner_right_index] = 5
-                simplify_arr[ifm_converter.mouth_raised_corner_left_index] = 5
-                simplify_arr[ifm_converter.mouth_raised_corner_right_index] = 5
-            if args.simplify >= 2:
-                simplify_arr[ifm_converter.head_x_index] = 100
-                simplify_arr[ifm_converter.head_y_index] = 100
-                simplify_arr[ifm_converter.eye_surprised_left_index] = 10
-                simplify_arr[ifm_converter.eye_surprised_right_index] = 10
-                model_input[ifm_converter.eye_wink_left_index] += model_input[
-                    ifm_converter.eye_happy_wink_left_index]
-                model_input[ifm_converter.eye_happy_wink_left_index] = model_input[
-                                                                           ifm_converter.eye_wink_left_index] / 2
-                model_input[ifm_converter.eye_wink_left_index] = model_input[
-                                                                     ifm_converter.eye_wink_left_index] / 2
-                model_input[ifm_converter.eye_wink_right_index] += model_input[
-                    ifm_converter.eye_happy_wink_right_index]
-                model_input[ifm_converter.eye_happy_wink_right_index] = model_input[
-                                                                            ifm_converter.eye_wink_right_index] / 2
-                model_input[ifm_converter.eye_wink_right_index] = model_input[
-                                                                      ifm_converter.eye_wink_right_index] / 2
 
-                uosum = model_input[ifm_converter.mouth_uuu_index] + \
-                        model_input[ifm_converter.mouth_ooo_index]
-                model_input[ifm_converter.mouth_ooo_index] = uosum
-                model_input[ifm_converter.mouth_uuu_index] = 0
-                is_open = (model_input[ifm_converter.mouth_aaa_index] + model_input[
-                    ifm_converter.mouth_iii_index] + uosum) > 0
-                model_input[ifm_converter.mouth_lowered_corner_left_index] = 0
-                model_input[ifm_converter.mouth_lowered_corner_right_index] = 0
-                model_input[ifm_converter.mouth_raised_corner_left_index] = 0.5 if is_open else 0
-                model_input[ifm_converter.mouth_raised_corner_right_index] = 0.5 if is_open else 0
-                simplify_arr[ifm_converter.mouth_lowered_corner_left_index] = 0
-                simplify_arr[ifm_converter.mouth_lowered_corner_right_index] = 0
-                simplify_arr[ifm_converter.mouth_raised_corner_left_index] = 0
-                simplify_arr[ifm_converter.mouth_raised_corner_right_index] = 0
-            if args.simplify >= 3:
-                simplify_arr[ifm_converter.iris_rotation_x_index] = 20
-                simplify_arr[ifm_converter.iris_rotation_y_index] = 20
-                simplify_arr[ifm_converter.eye_wink_left_index] = 32
-                simplify_arr[ifm_converter.eye_wink_right_index] = 32
-                simplify_arr[ifm_converter.eye_happy_wink_left_index] = 32
-                simplify_arr[ifm_converter.eye_happy_wink_right_index] = 32
-            if args.simplify >= 4:
-                simplify_arr[ifm_converter.head_x_index] = 50
-                simplify_arr[ifm_converter.head_y_index] = 50
-                simplify_arr[ifm_converter.neck_z_index] = 100
-                model_input[ifm_converter.eye_raised_lower_eyelid_left_index] = 0
-                model_input[ifm_converter.eye_raised_lower_eyelid_right_index] = 0
-                simplify_arr[ifm_converter.iris_rotation_x_index] = 10
-                simplify_arr[ifm_converter.iris_rotation_y_index] = 10
-                simplify_arr[ifm_converter.eye_wink_left_index] = 24
-                simplify_arr[ifm_converter.eye_wink_right_index] = 24
-                simplify_arr[ifm_converter.eye_happy_wink_left_index] = 24
-                simplify_arr[ifm_converter.eye_happy_wink_right_index] = 24
-                simplify_arr[ifm_converter.eye_surprised_left_index] = 8
-                simplify_arr[ifm_converter.eye_surprised_right_index] = 8
-                model_input[ifm_converter.eye_wink_left_index] += model_input[
-                    ifm_converter.eye_wink_right_index]
-                model_input[ifm_converter.eye_wink_right_index] = model_input[
-                                                                      ifm_converter.eye_wink_left_index] / 2
-                model_input[ifm_converter.eye_wink_left_index] = model_input[
-                                                                     ifm_converter.eye_wink_left_index] / 2
-
-                model_input[ifm_converter.eye_surprised_left_index] += model_input[
-                    ifm_converter.eye_surprised_right_index]
-                model_input[ifm_converter.eye_surprised_right_index] = model_input[
-                                                                           ifm_converter.eye_surprised_left_index] / 2
-                model_input[ifm_converter.eye_surprised_left_index] = model_input[
-                                                                          ifm_converter.eye_surprised_left_index] / 2
-
-                model_input[ifm_converter.eye_happy_wink_left_index] += model_input[
-                    ifm_converter.eye_happy_wink_right_index]
-                model_input[ifm_converter.eye_happy_wink_right_index] = model_input[
-                                                                            ifm_converter.eye_happy_wink_left_index] / 2
-                model_input[ifm_converter.eye_happy_wink_left_index] = model_input[
-                                                                           ifm_converter.eye_happy_wink_left_index] / 2
-                model_input[ifm_converter.mouth_aaa_index] = min(
-                    model_input[ifm_converter.mouth_aaa_index] +
-                    model_input[ifm_converter.mouth_ooo_index] / 2 +
-                    model_input[ifm_converter.mouth_iii_index] / 2 +
-                    model_input[ifm_converter.mouth_uuu_index] / 2, 1
-                )
-                model_input[ifm_converter.mouth_ooo_index] = 0
-                model_input[ifm_converter.mouth_iii_index] = 0
-                model_input[ifm_converter.mouth_uuu_index] = 0
-            for i in range(4, args.simplify):
-                simplify_arr = [max(math.ceil(x * 0.8), 5) for x in simplify_arr]
-            for i in range(0, len(simplify_arr)):
-                if simplify_arr[i] > 0:
-                    model_input[i] = round(model_input[i] * simplify_arr[i]) / simplify_arr[i]
-
-            if args.perf == 'model':
-                tic = time.perf_counter()
-            if args.eyebrow:
-                for i in range(12):
-                    input_pose[0, i] = model_input[i]
-            for i in range(27):
-                input_pose[0, i + 12] = model_input[i + 12]
-            for i in range(6):
-                input_pose[0, i + 12 + 27] = model_input[i + 27 + 12]
-
-            output_images = self.model.inference(input_pose)
+            #Framerate limit process
             
-            if args.perf == 'model':
-                print("postprocess", (time.perf_counter() - tic) * 1000)
-                tic = time.perf_counter()
+            # model_fps_interval = (1 / model_fps.view())
+            # frame_interval = frame_rate_interval if frame_rate_interval > model_fps_interval else model_fps_interval #Interval limitation：the smallest allowed interval is the settup framerate
+            now = time.time()
+            if now < (target_interval * 0.9 + last_process_time): continue #
+            last_process_time = now
 
-            for i in range(len(self.shared_nps)):
-                np.copyto(self.shared_nps[i], output_images[i])
+
+            np.copyto(self.shared_np, self.model.syncFetchRes())
             self.output_queue.put_nowait(True)
 
             if args.debug:
@@ -518,9 +409,128 @@ class ModelClientProcess(Process):
                     self.cache_hit_ratio.value = self.model.cacher.hits / (self.model.cacher.hits + self.model.cacher.miss + 1)
                 try:
                     if args.use_tensorrt and args.model_cache and args.model_vram_cache:
-                        self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
+                        self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss + 1)
                 except:
                     pass
+            print('output frame')
+            if self.model.finishedFetch():
+                print('reload result')
+                simplify_arr = [1000] * ifm_converter.pose_size
+                if args.simplify >= 1:
+                    simplify_arr = [200] * ifm_converter.pose_size
+                    simplify_arr[ifm_converter.eye_wink_left_index] = 50
+                    simplify_arr[ifm_converter.eye_wink_right_index] = 50
+                    simplify_arr[ifm_converter.eye_happy_wink_left_index] = 50
+                    simplify_arr[ifm_converter.eye_happy_wink_right_index] = 50
+                    simplify_arr[ifm_converter.eye_surprised_left_index] = 30
+                    simplify_arr[ifm_converter.eye_surprised_right_index] = 30
+                    simplify_arr[ifm_converter.iris_rotation_x_index] = 25
+                    simplify_arr[ifm_converter.iris_rotation_y_index] = 25
+                    simplify_arr[ifm_converter.eye_raised_lower_eyelid_left_index] = 10
+                    simplify_arr[ifm_converter.eye_raised_lower_eyelid_right_index] = 10
+                    simplify_arr[ifm_converter.mouth_lowered_corner_left_index] = 5
+                    simplify_arr[ifm_converter.mouth_lowered_corner_right_index] = 5
+                    simplify_arr[ifm_converter.mouth_raised_corner_left_index] = 5
+                    simplify_arr[ifm_converter.mouth_raised_corner_right_index] = 5
+                if args.simplify >= 2:
+                    simplify_arr[ifm_converter.head_x_index] = 100
+                    simplify_arr[ifm_converter.head_y_index] = 100
+                    simplify_arr[ifm_converter.eye_surprised_left_index] = 10
+                    simplify_arr[ifm_converter.eye_surprised_right_index] = 10
+                    model_input[ifm_converter.eye_wink_left_index] += model_input[
+                        ifm_converter.eye_happy_wink_left_index]
+                    model_input[ifm_converter.eye_happy_wink_left_index] = model_input[
+                                                                            ifm_converter.eye_wink_left_index] / 2
+                    model_input[ifm_converter.eye_wink_left_index] = model_input[
+                                                                        ifm_converter.eye_wink_left_index] / 2
+                    model_input[ifm_converter.eye_wink_right_index] += model_input[
+                        ifm_converter.eye_happy_wink_right_index]
+                    model_input[ifm_converter.eye_happy_wink_right_index] = model_input[
+                                                                                ifm_converter.eye_wink_right_index] / 2
+                    model_input[ifm_converter.eye_wink_right_index] = model_input[
+                                                                        ifm_converter.eye_wink_right_index] / 2
+
+                    uosum = model_input[ifm_converter.mouth_uuu_index] + \
+                            model_input[ifm_converter.mouth_ooo_index]
+                    model_input[ifm_converter.mouth_ooo_index] = uosum
+                    model_input[ifm_converter.mouth_uuu_index] = 0
+                    is_open = (model_input[ifm_converter.mouth_aaa_index] + model_input[
+                        ifm_converter.mouth_iii_index] + uosum) > 0
+                    model_input[ifm_converter.mouth_lowered_corner_left_index] = 0
+                    model_input[ifm_converter.mouth_lowered_corner_right_index] = 0
+                    model_input[ifm_converter.mouth_raised_corner_left_index] = 0.5 if is_open else 0
+                    model_input[ifm_converter.mouth_raised_corner_right_index] = 0.5 if is_open else 0
+                    simplify_arr[ifm_converter.mouth_lowered_corner_left_index] = 0
+                    simplify_arr[ifm_converter.mouth_lowered_corner_right_index] = 0
+                    simplify_arr[ifm_converter.mouth_raised_corner_left_index] = 0
+                    simplify_arr[ifm_converter.mouth_raised_corner_right_index] = 0
+                if args.simplify >= 3:
+                    simplify_arr[ifm_converter.iris_rotation_x_index] = 20
+                    simplify_arr[ifm_converter.iris_rotation_y_index] = 20
+                    simplify_arr[ifm_converter.eye_wink_left_index] = 32
+                    simplify_arr[ifm_converter.eye_wink_right_index] = 32
+                    simplify_arr[ifm_converter.eye_happy_wink_left_index] = 32
+                    simplify_arr[ifm_converter.eye_happy_wink_right_index] = 32
+                if args.simplify >= 4:
+                    simplify_arr[ifm_converter.head_x_index] = 50
+                    simplify_arr[ifm_converter.head_y_index] = 50
+                    simplify_arr[ifm_converter.neck_z_index] = 100
+                    model_input[ifm_converter.eye_raised_lower_eyelid_left_index] = 0
+                    model_input[ifm_converter.eye_raised_lower_eyelid_right_index] = 0
+                    simplify_arr[ifm_converter.iris_rotation_x_index] = 10
+                    simplify_arr[ifm_converter.iris_rotation_y_index] = 10
+                    simplify_arr[ifm_converter.eye_wink_left_index] = 24
+                    simplify_arr[ifm_converter.eye_wink_right_index] = 24
+                    simplify_arr[ifm_converter.eye_happy_wink_left_index] = 24
+                    simplify_arr[ifm_converter.eye_happy_wink_right_index] = 24
+                    simplify_arr[ifm_converter.eye_surprised_left_index] = 8
+                    simplify_arr[ifm_converter.eye_surprised_right_index] = 8
+                    model_input[ifm_converter.eye_wink_left_index] += model_input[
+                        ifm_converter.eye_wink_right_index]
+                    model_input[ifm_converter.eye_wink_right_index] = model_input[
+                                                                        ifm_converter.eye_wink_left_index] / 2
+                    model_input[ifm_converter.eye_wink_left_index] = model_input[
+                                                                        ifm_converter.eye_wink_left_index] / 2
+
+                    model_input[ifm_converter.eye_surprised_left_index] += model_input[
+                        ifm_converter.eye_surprised_right_index]
+                    model_input[ifm_converter.eye_surprised_right_index] = model_input[
+                                                                            ifm_converter.eye_surprised_left_index] / 2
+                    model_input[ifm_converter.eye_surprised_left_index] = model_input[
+                                                                            ifm_converter.eye_surprised_left_index] / 2
+
+                    model_input[ifm_converter.eye_happy_wink_left_index] += model_input[
+                        ifm_converter.eye_happy_wink_right_index]
+                    model_input[ifm_converter.eye_happy_wink_right_index] = model_input[
+                                                                                ifm_converter.eye_happy_wink_left_index] / 2
+                    model_input[ifm_converter.eye_happy_wink_left_index] = model_input[
+                                                                            ifm_converter.eye_happy_wink_left_index] / 2
+                    model_input[ifm_converter.mouth_aaa_index] = min(
+                        model_input[ifm_converter.mouth_aaa_index] +
+                        model_input[ifm_converter.mouth_ooo_index] / 2 +
+                        model_input[ifm_converter.mouth_iii_index] / 2 +
+                        model_input[ifm_converter.mouth_uuu_index] / 2, 1
+                    )
+                    model_input[ifm_converter.mouth_ooo_index] = 0
+                    model_input[ifm_converter.mouth_iii_index] = 0
+                    model_input[ifm_converter.mouth_uuu_index] = 0
+                for i in range(4, args.simplify):
+                    simplify_arr = [max(math.ceil(x * 0.8), 5) for x in simplify_arr]
+                for i in range(0, len(simplify_arr)):
+                    if simplify_arr[i] > 0:
+                        model_input[i] = round(model_input[i] * simplify_arr[i]) / simplify_arr[i]
+
+                if args.perf == 'model':
+                    tic = time.perf_counter()
+                if args.eyebrow:
+                    for i in range(12):
+                        input_pose[0, i] = model_input[i]
+                for i in range(27):
+                    input_pose[0, i + 12] = model_input[i + 12]
+                for i in range(6):
+                    input_pose[0, i + 12 + 27] = model_input[i + 27 + 12]
+                
+                self.model.infer(input_pose)
 
 
 @torch.no_grad()
@@ -640,14 +650,13 @@ def main():
         'z_angle': 0,
     }
 
-    model_output = None
     model_process = ModelClientProcess(input_image)
     model_process.daemon = True
     model_process.start()
-    model_output_nps = [np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shms[i].buf) for i in range(len(model_process.shms))]
-    model_result_read_ptr = 0
-    model_return_fps = FPS(5)
-    need_a_copy = True
+    model_output_np = np.ndarray((args.model_output_size, args.model_output_size, 4), dtype=np.uint8, buffer=model_process.shm.buf) 
+    model_output = model_output_np.copy()
+    need_copy = False
+
 
     print("Ready. Close this console to exit.")
 
@@ -872,22 +881,15 @@ def main():
         try:
             while not model_process.output_queue.empty():
                 model_process.output_queue.get_nowait()
-                model_result_read_ptr = 0
-                model_return_fps()
-                need_a_copy = True
+                need_copy = True
         except queue.Empty:
             pass
 
-        if need_a_copy:
-            model_output = model_output_nps[model_result_read_ptr].copy()
-            need_a_copy = False
-        interval = 1 / (model_return_fps.view()+ 1e-10) / len(model_output_nps) * 0.8
-        if model_result_read_ptr + 1 < len(model_output_nps) and time.time() >= ((model_result_read_ptr + 1) * interval + model_return_fps.last()):
-            model_result_read_ptr += 1
-            need_a_copy = True
-
-
+        if need_copy:
+            model_output = model_output_np.copy()
         postprocessed_image = model_output
+        
+        
         if args.perf == 'main':
             print("Compute", time.perf_counter() - tic)
             tic = time.perf_counter()
@@ -955,7 +957,7 @@ def main():
             cv2.putText(output_frame, str('OUT_FPS:%.1f' % output_fps_number), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
                         (0, 255, 0), 1)
             cv2.putText(output_frame, str(
-                'GPU_FPS:%.1f' % (model_process.model_fps_number.value if not args.use_interpolation else model_process.model_fps_number.value * args.interpolation_scale)),
+                'GPU_FPS:%.1f' % (model_process.model_fps_number.value)),
                         (0, 32),
                         cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
             if args.ifm is not None:
