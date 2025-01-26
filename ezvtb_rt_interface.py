@@ -114,8 +114,13 @@ def get_core(
     
 if __name__ == '__main__':
     init_ezvtb_rt()
-    from ezvtb_rt.trt_utils import check_build_all_models
+    from ezvtb_rt.trt_utils import check_build_all_models, cudaSetDevice
+    device_id = 0
+    import sys
+    if len(sys.argv) > 1:
+        device_id = int(sys.argv[1])
     try:
+        cudaSetDevice(device_id)
         check_build_all_models('./data/models')
     except:
         pass

@@ -512,11 +512,8 @@ class ModelClientProcess(Process):
                 self.model_fps_number.value = model_fps()
                 if self.model.cacher is not None:
                     self.cache_hit_ratio.value = self.model.cacher.hits / (self.model.cacher.hits + self.model.cacher.miss + 1)
-                try:
-                    if args.use_tensorrt and args.model_cache and args.model_vram_cache:
-                        self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
-                except:
-                    pass
+                if args.use_tensorrt:
+                    self.gpu_cache_hit_ratio.value = self.model.tha.morpher_cacher.hits / (self.model.tha.morpher_cacher.hits + self.model.tha.morpher_cacher.miss)
 
 
 @torch.no_grad()
@@ -903,15 +900,16 @@ def main():
         if args.bongo:
             rotate_angle -= 5
         
-        rm = cv2.getRotationMatrix2D((args.model_output_size / 2, args.model_output_size / 2), rotate_angle, k_scale)
-        rm[0, 2] += dx + args.model_output_size / 2 - args.model_output_size / 2
-        rm[1, 2] += dy + args.model_output_size / 2 - args.model_output_size / 2
+        if args.extend_movement or args.bongo:
+            rm = cv2.getRotationMatrix2D((args.model_output_size / 2, args.model_output_size / 2), rotate_angle, k_scale)
+            rm[0, 2] += dx
+            rm[1, 2] += dy
 
 
-        postprocessed_image = cv2.warpAffine(
-            postprocessed_image,
-            rm,
-            (args.model_output_size, args.model_output_size))
+            postprocessed_image = cv2.warpAffine(
+                postprocessed_image,
+                rm,
+                (args.model_output_size, args.model_output_size))
 
         if args.perf == 'main':
             print("postprocess", (time.perf_counter() - tic) * 1000)
