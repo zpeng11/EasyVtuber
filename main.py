@@ -349,8 +349,6 @@ class ModelClientProcess(Process):
 
                               model_seperable = args.model_seperable,
                               model_half=args.model_half, 
-                              model_cache=args.model_cache, 
-                              model_vram_cache=args.model_vram_cache,
                               model_cache_size=args.max_gpu_cache_len, 
                               model_use_eyebrow=args.eyebrow,
 
@@ -358,14 +356,12 @@ class ModelClientProcess(Process):
                               interpolation_scale=args.interpolation_scale,
                               interpolation_half=args.interpolation_half,
 
-                              use_cacher=args.use_cacher, 
                               cacher_quality=args.cacher_quality,
                               cacher_ram_size=args.max_cache_len, 
 
                               use_sr = args.use_sr, 
                               sr_half= args.sr_half, 
-                              sr_x4=args.sr_x4,
-                              sr_noise=args.sr_noise)
+                              sr_x4=args.sr_x4)
         self.model.setImage(self.input_image)
         input_pose = np.zeros((1,45), dtype=np.float32)
 
@@ -385,7 +381,7 @@ class ModelClientProcess(Process):
             if model_input is None: continue
             frame_interval = (1 / args.frame_rate_limit) if not args.use_interpolation else (1 / args.frame_rate_limit * args.interpolation_scale)
             now = time.time()
-            if now < frame_interval + last_process_time - 0.005: continue #
+            if now < (frame_interval * 0.9) + last_process_time: continue #
             last_process_time = now
             simplify_arr = [1000] * ifm_converter.pose_size
             if args.simplify >= 1:
