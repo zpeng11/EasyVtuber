@@ -47,7 +47,7 @@ default_arg = {
     'frame_rate_limit': '30',
     'sr': 'Off',
     'device_id': '0',
-    'use_tensorrt': True,
+    'use_tensorrt': False,
     'preset': 'Medium'
 }
 
@@ -65,6 +65,14 @@ p = None
 dirPath = 'data/images'
 characterList = []
 
+hasRTModel = False
+try:
+    f = open('data/models/tha3/standard/fp16/decomposer.trt')
+    f.close()
+    hasRTModel = True
+except:
+    pass
+
 
 def refreshList():
     global characterList
@@ -78,7 +86,7 @@ refreshList()
 
 
 class OptionPanel(wx.Panel):
-    def __init__(self, parent, title='', desc='', choices=None, mapping=None, type=0, default=None):
+    def __init__(self, parent, title='', desc='', choices=None, mapping=None, type=0, default=None, disabled=False):
         wx.Panel.__init__(self, parent)
         self.type = type
         if mapping is not None:
@@ -304,6 +312,9 @@ class LauncherPanel(wx.Panel):
             refreshList()
             self.optionDict['character'].control.SetItems(characterList)
             self.optionDict['character'].control.SetSelection(characterList.index(tName))
+
+        if not hasRTModel:
+            self.optionDict['use_tensorrt'].control.Enable(False)
 
         self.frame.Bind(wx.EVT_ACTIVATE, onActivate)
 
