@@ -220,7 +220,8 @@ class LauncherPanel(wx.Panel):
 
         addOption('device_id', title='GPU Device', desc='选择需要使用的计算设备(默认0)', choices=['0', '1', '2', '3'])
         addOption('use_tensorrt', title='TensorRT',
-                  desc='开启TensorRT后可使用预编译模型\n进一步提升性能（仅NVIDIA显卡支持）', type=1)
+                  desc='运行过预构建脚本后开启TensorRT可进一步提升性能\n（未构建成功时不可用，仅NVIDIA显卡支持）',
+                  type=1)
 
         addOption('frame_rate_limit', title='FPS Limit', desc='选择帧率限制目标',
                   choices=['10', '15', '20', '30', '60'])
@@ -314,7 +315,9 @@ class LauncherPanel(wx.Panel):
             self.optionDict['character'].control.SetSelection(characterList.index(tName))
 
         if not hasRTModel:
+            self.optionDict['use_tensorrt'].control.SetValue(False)
             self.optionDict['use_tensorrt'].control.Enable(False)
+            self.optionDict['use_tensorrt'].control.SetToolTip('需要先构建TensorRT模型')
 
         self.frame.Bind(wx.EVT_ACTIVATE, onActivate)
 
