@@ -28,13 +28,13 @@ call conda create -y -n ezvtb_rt_venv python=3.10
 call conda activate ezvtb_rt_venv
 call conda env list
 
-call conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
+call conda install -y nvidia/label/cuda-12.9.0::cuda-nvcc-dev_win-64
 call conda install -y conda-forge::pycuda 
 
 call python -m pip install --upgrade pip wheel
 echo yes|python -m pip install nvidia-cudnn-cu12
 
-echo yes|pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
+echo yes|pip install tensorrt_cu12_libs==10.11.0.33 tensorrt_cu12_bindings==10.11.0.33 tensorrt==10.11.0.33 --extra-index-url https://pypi.nvidia.com
 
 call python -m pip install -r requirements.txt --no-warn-script-location
 
