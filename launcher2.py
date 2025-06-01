@@ -9,24 +9,23 @@ import sys
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 p = None
 cache_simplify_map = {
-    'Off':0,
-    'Low':1,
-    'Medium':2,
-    'High':3,
-    'Higher':4,
-    'Highest':6,
-    'Gaming':8
+    'Off': 0,
+    'Low': 1,
+    'Medium': 2,
+    'High': 3,
+    'Higher': 4,
+    'Highest': 6,
+    'Gaming': 8
 }
 
-
 cache_simplify_quality_map = {
-    'Off':100,
-    'Low':99,
-    'Medium':95,
-    'High':90,
-    'Higher':85,
-    'Highest':80,
-    'Gaming':75
+    'Off': 100,
+    'Low': 99,
+    'Medium': 95,
+    'High': 90,
+    'Higher': 85,
+    'Highest': 80,
+    'Gaming': 75
 }
 default_arg = {
     'character': 'lambda_00',
@@ -37,6 +36,7 @@ default_arg = {
     'is_extend_movement': False,
     'is_alpha_split': False,
     'is_bongo': False,
+    'is_alpha_clean': False,
     'is_eyebrow': False,
     'cache_simplify': 'High',
     'cache_compression': 'High',
@@ -47,7 +47,7 @@ default_arg = {
     'frame_rate_limit': '30',
     'sr': 'Off',
     'device_id': '0',
-    'use_tensorrt': True,
+    'use_tensorrt': False,
     'preset': 'Medium'
 }
 
@@ -65,16 +65,28 @@ p = None
 dirPath = 'data/images'
 characterList = []
 
+hasRTModel = False
+try:
+    f = open('data/models/tha3/standard/fp16/decomposer.trt')
+    f.close()
+    hasRTModel = True
+except:
+    pass
+
+
 def refreshList():
     global characterList
     characterList = []
     for item in sorted(os.listdir(dirPath), key=lambda x: -os.path.getmtime(os.path.join(dirPath, x))):
         if '.png' == item[-4:]:
             characterList.append(item[:-4])
+
+
 refreshList()
 
+
 class OptionPanel(wx.Panel):
-    def __init__(self, parent, title='', desc='', choices=None, mapping=None, type=0, default=None):
+    def __init__(self, parent, title='', desc='', choices=None, mapping=None, type=0, default=None, disabled=False):
         wx.Panel.__init__(self, parent)
         self.type = type
         if mapping is not None:
@@ -206,9 +218,10 @@ class LauncherPanel(wx.Panel):
                   choices=['Spout2', 'OBS VirtualCam', 'UnityCapture', 'Debug Output'],
                   mapping=[3, 1, 0, 2])
 
-        addOption('device_id', title='GPU Device', desc='选择需要使用的计算设备(默认0)', choices=['0','1','2','3'])
+        addOption('device_id', title='GPU Device', desc='选择需要使用的计算设备(默认0)', choices=['0', '1', '2', '3'])
         addOption('use_tensorrt', title='TensorRT',
-                  desc='开启TensorRT后可使用预编译模型\n进一步提升性能（仅NVIDIA显卡支持）', type=1)
+                  desc='运行过预构建脚本后开启TensorRT可进一步提升性能\n（未构建成功时不可用，仅NVIDIA显卡支持）',
+                  type=1)
 
         addOption('frame_rate_limit', title='FPS Limit', desc='选择帧率限制目标',
                   choices=['10', '15', '20', '30', '60'])
@@ -230,13 +243,15 @@ class LauncherPanel(wx.Panel):
                   desc='设置内存缓存压缩等级\n压缩等级越高，缓存命中率越高，输出质量越差',
                   choices=['Off', 'Low', 'Medium', 'High'])
 
-
         addOption('sr', title='SuperResolution', desc='选择使用的超分模型\n由于性能原因，real-esrgan会进行裁切',
                   choices=['Off', 'anime4k_x2', 'waifu2x_x2_half', 'real-esrgan_x4_half', 'waifu2x_x2_full',
                            'real-esrgan_x4_full'])
         addOption('interpolation', title='Frame Interpolation', desc='选择使用的补帧模型',
                   choices=['Off', 'x2_half', 'x3_half', 'x4_half', 'x2_full', 'x3_full', 'x4_full'])
 
+        addOption('is_alpha_clean', title='Alpha Preprocessing',
+                  desc='预处理Alpha通道\n代替LayerDiffusion生图后PS蒙版清理操作',
+                  type=1)
         addOption('is_extend_movement', title='Extend Movement', desc='基于面捕的XY输入移动、缩放输出图像提升可动性',
                   type=1)
         addOption('is_bongo', title='Bongocat Mode', desc='适当旋转输出以适配Bongocat桌宠', type=1)
@@ -244,77 +259,67 @@ class LauncherPanel(wx.Panel):
                   type=1)
 
         def inputChoice(e=None):
-            s=self.optionDict['input'].GetValue()
-            if s!=0:
+            s = self.optionDict['input'].GetValue()
+            if s != 0:
                 self.optionSizer.Hide(self.optionDict['ifm'])
                 self.optionSizer.Hide(self.optionDict['is_eyebrow'])
             else:
                 self.optionSizer.Show(self.optionDict['ifm'])
                 self.optionSizer.Show(self.optionDict['is_eyebrow'])
-            if s!=4:
+            if s != 4:
                 self.optionSizer.Hide(self.optionDict['osf'])
             else:
                 self.optionSizer.Show(self.optionDict['osf'])
 
             self.frame.fSizer.Layout()
             self.frame.Fit()
-        self.optionDict['input'].Bind(wx.EVT_CHOICE,inputChoice)
+
+        self.optionDict['input'].Bind(wx.EVT_CHOICE, inputChoice)
         inputChoice()
 
         def presetChoice(e=None):
             s = self.optionDict['preset'].GetValue()
-            presetControls=[
+            presetControls = [
                 self.optionDict['model_select'],
                 self.optionDict['ram_cache_size'],
                 self.optionDict['vram_cache_size'],
                 self.optionDict['cache_simplify'],
                 self.optionDict['cache_compression'],
             ]
-            presets={
-                'Low':[0,1,1,5,3],
-                'Medium':[1,1,1,4,2],
-                'High':[1,2,2,2,2],
-                'Ultra':[3,3,3,1,1]
+            presets = {
+                'Low': [0, 1, 1, 5, 3],
+                'Medium': [1, 1, 1, 4, 2],
+                'High': [1, 2, 2, 2, 2],
+                'Ultra': [3, 3, 3, 1, 1]
             }
 
-            if s=='Custom':
+            if s == 'Custom':
                 for c in presetControls: self.optionSizer.Show(c)
             else:
                 for c in presetControls: self.optionSizer.Hide(c)
             if s in presets:
-                opt=presets[s]
+                opt = presets[s]
                 for i in range(5): presetControls[i].control.SetSelection(opt[i])
 
             self.frame.fSizer.Layout()
             self.frame.Fit()
-        self.optionDict['preset'].Bind(wx.EVT_CHOICE,presetChoice)
+
+        self.optionDict['preset'].Bind(wx.EVT_CHOICE, presetChoice)
         presetChoice()
 
         def onActivate(e):
             global characterList
-            tName=self.optionDict['character'].GetValue()
+            tName = self.optionDict['character'].GetValue()
             refreshList()
             self.optionDict['character'].control.SetItems(characterList)
             self.optionDict['character'].control.SetSelection(characterList.index(tName))
-        self.frame.Bind(wx.EVT_ACTIVATE,onActivate)
-    # def OnAddWidget(self, e):
-    #     self.number_of_buttons += 1 
-    #     label = "按钮 %s" % self.number_of_buttons 
-    #     name = "button%s" % self.number_of_buttons 
-    #     new_button = wx.Button(self, label=label, name=name) 
-    #     self.widgetSizer.Add(new_button, 0, wx.ALL, 5) 
-    #     self.frame.fSizer.Layout() 
-    #     self.frame.Fit() 
-    # 
-    # def OnRemoveWidget(self, e): 
-    #     if self.widgetSizer.GetChildren(): 
-    #         sizer_item = self.widgetSizer.GetItem(self.number_of_buttons - 1) 
-    #         widget = sizer_item.GetWindow() 
-    #         self.widgetSizer.Hide(widget) 
-    #         widget.Destroy() 
-    #         self.number_of_buttons -= 1 
-    #         self.frame.fSizer.Layout() 
-    #         self.frame.Fit() 
+
+        if not hasRTModel:
+            self.optionDict['use_tensorrt'].control.SetValue(False)
+            self.optionDict['use_tensorrt'].control.Enable(False)
+            self.optionDict['use_tensorrt'].control.SetToolTip('需要先构建TensorRT模型')
+
+        self.frame.Bind(wx.EVT_ACTIVATE, onActivate)
 
     def OnLaunch(self, e):
         global p
@@ -372,6 +377,8 @@ class LauncherPanel(wx.Panel):
                 run_args.append('1')
             if args['is_bongo']:
                 run_args.append('--bongo')
+            if args['is_alpha_clean']:
+                run_args.append('--alpha_clean')
             if args['is_eyebrow']:
                 run_args.append('--eyebrow')
             if args['cache_simplify'] is not None:
@@ -439,11 +446,19 @@ class LauncherPanel(wx.Panel):
             self.btnLaunch.SetLabelText('Stop')
 
 
-
 class MainFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(MainFrame, self).__init__(*args, **kw)
         self.InitUi()
+
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+    def OnClose(self, e):
+        global p
+        if p is not None:
+            subprocess.run(['taskkill', '/F', '/PID', str(p.pid), '/T'], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+        e.Skip()
 
     def InitUi(self):
         self.SetTitle("EasyVtuber Launcher")

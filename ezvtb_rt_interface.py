@@ -44,6 +44,7 @@ def get_core(
         use_sr:bool = False,
         sr_x4:bool = True,
         sr_half:bool = True,
+        sr_noise:int = 1
         ):
     support_trt = False
     if use_tensorrt: #Verify tensorrt
@@ -81,9 +82,9 @@ def get_core(
                 sr_model_path = os.path.join('.','data', 'models', 'Real-ESRGAN', 'exported_256')
         else: #x2
             if sr_half:
-                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp16', 'upconv_7', 'art', f'noise1_scale2x')
+                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp16', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
             else:
-                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp32', 'upconv_7', 'art', f'noise1_scale2x')
+                sr_model_path = os.path.join('.','data', 'models', 'waifu2x_upconv', 'fp32', 'upconv_7', 'art', f'noise{sr_noise}_scale2x')
 
     print(f'THA3 Path:{tha_model_dir}')
     print(f'RIFE Path:{rife_model_path}')

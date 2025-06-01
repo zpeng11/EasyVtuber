@@ -35,7 +35,7 @@ Updates:
 
 ## 整合包版本
 请使用合适方式下载整合包并自行解压：
-* [夸克网盘](https://pan.quark.cn/s/b61ad5315f59)  
+* [夸克网盘](https://pan.quark.cn/s/cda200521df7)  
 * 磁力链接 magnet:?xt=urn:btih:89bee6bc129f2e146f799e6421c0d5ef3bb4b9ff
 * [谷歌网盘](https://drive.google.com/drive/folders/1cYj18EfVQ2Cl348_rkCu_fgaasHTI_io?usp=drive_link)  
 
