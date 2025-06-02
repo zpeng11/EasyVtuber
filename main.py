@@ -30,6 +30,7 @@ from pyanime4k import ac
 from tha2.mocap.ifacialmocap_constants import *
 
 from args import args
+import copy
 
 from tha3.util import torch_linear_to_srgb, resize_PIL_image, extract_PIL_image_from_filelike, \
     extract_pytorch_image_from_PIL_image
@@ -348,18 +349,15 @@ class ModelClientProcess(Process):
         self.model = get_core(device_id=args.device_id,
                               use_tensorrt=args.use_tensorrt,
 
-                              model_seperable=args.model_seperable,
-                              model_half=args.model_half,
-                              model_cache=args.model_cache,
-                              model_vram_cache=args.model_vram_cache,
-                              model_cache_size=args.max_gpu_cache_len,
+                              model_seperable = args.model_seperable,
+                              model_half=args.model_half, 
+                              model_cache_size=args.max_gpu_cache_len, 
                               model_use_eyebrow=args.eyebrow,
 
                               use_interpolation=args.use_interpolation,
                               interpolation_scale=args.interpolation_scale,
                               interpolation_half=args.interpolation_half,
 
-                              use_cacher=args.use_cacher,
                               cacher_quality=args.cacher_quality,
                               cacher_ram_size=args.max_cache_len,
 
@@ -660,6 +658,8 @@ def main():
 
     print("Ready. Close this console to exit.")
 
+    mouth_eye_vector_c_hist = []
+
     while True:
         # ret, frame = cap.read()
         # input_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -734,6 +734,16 @@ def main():
                 position_vector[0] = -(blender_data['translationX'] - position_vector_0[0]) * 0.1
                 position_vector[1] = -(blender_data['translationY'] - position_vector_0[1]) * 0.1
                 position_vector[2] = -(blender_data['translationZ'] - position_vector_0[2]) * 0.1
+
+            # Apply filter
+            if len(mouth_eye_vector_c_hist) == 0:
+                for _ in range(3):
+                    mouth_eye_vector_c_hist.append(copy.deepcopy(mouth_eye_vector_c))
+            else:
+                mouth_eye_vector_c_hist.pop(0)
+                mouth_eye_vector_c_hist.append(mouth_eye_vector_c)
+            mouth_eye_vector_c[25] = mouth_eye_vector_c_hist[0][25] * 0.2 + mouth_eye_vector_c_hist[1][25] * 0.5 + mouth_eye_vector_c_hist[2][25] * 0.3 
+            mouth_eye_vector_c[26] = mouth_eye_vector_c_hist[0][26] * 0.2 + mouth_eye_vector_c_hist[1][26] * 0.5 + mouth_eye_vector_c_hist[2][26] * 0.3 
 
         elif args.ifm is not None:
             # get pose from ifm
