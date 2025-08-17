@@ -4,13 +4,6 @@ import subprocess
 import urllib.request
 import shutil
 
-def init_ezvtb_rt(search_dir = '.'):
-    if not os.path.exists(ezvtb_path) and not os.path.exists(ezvtb_main_path): #Check if rt not exist
-        zip_path = 'https://github.com/zpeng11/ezvtuber-rt/archive/refs/heads/main.zip'
-        filehandle, _ = urllib.request.urlretrieve(zip_path)
-        os.rename(filehandle, filehandle + '.zip')
-        shutil.unpack_archive(filehandle + '.zip' , '.')
-
 dir_path = os.path.dirname(os.path.realpath(__file__))
 ezvtb_path = os.path.join(dir_path, 'ezvtuber-rt')
 ezvtb_main_path = os.path.join(dir_path, 'ezvtuber-rt-main')
@@ -114,7 +107,6 @@ def get_core(
     return core
     
 if __name__ == '__main__':
-    init_ezvtb_rt()
     from ezvtb_rt.trt_utils import check_build_all_models, cudaSetDevice
     device_id = 0
     import sys
