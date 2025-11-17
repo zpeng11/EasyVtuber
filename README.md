@@ -74,12 +74,20 @@ Start testing if TensorRT works on this machine
 ```
 
 ### 启动项目
-双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动。如果上一步构建未完成或者使用A/I卡，需要**手动**将TensorRT去除勾选：
+双击`02A.启动器.bat` 或 `02B.启动器（调试输出）.bat` 启动器，如下图启动。
 ![](assets/02success.png)   
 之后请移步后文的输入输出&性能配置板块自行调节。如有问题请先参考本页末的FAQ再提出。
 
 ## Installation(科学上网且使用Git)  
 可使用此安装方法对本项目二次开发
+
+### 克隆项目
+```cmd
+git clone https://github.com/zpeng11/EasyVtuber.git && cd EasyVtuber
+```
+
+### 安装Mircosoft Visual Studio 2022+
+请参考其他教程安装[VS2022+](https://visualstudio.microsoft.com/), 至少需要C++编译环境。在下面所说的安装命令均需要在`VS2022`附带的命令行工具`Developer Command Prompt for VS 2022`中使用，安装`VS2022`成功后你应当可以在搜索中打开。
 
 ### 安装Anaconda（可选）
 前往https://www.anaconda.com/ 安装Anaconda 并保证加入环境变量命令行可以找到，如：
@@ -87,28 +95,23 @@ Start testing if TensorRT works on this machine
 C:\Users\Eleven>conda --version
 conda 24.11.3
 ```
-以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步，`01X.构建运行环境（XX源）.bat`脚本会自动安装miniconda。
+以上方式可以保证conda环境被你选定的Ananconda统一管理。若没有此需求可以忽略直接运行下一步。
 
-### 克隆项目和子项目
+### 下载 FFmpeg
+自行下载并解压[Release Page](https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip)
+
+然后在环境变量中指向解压后的文件夹,可用命令行设置
 ```
-git clone https://github.com/zpeng11/EasyVtuber.git
-cd EasyVtuber
-git submodule init
-git submodule update --recursive --remote
+C:\Users\Eleven> set FFMPEG_DIR=C:\Dir\To\FFmpeg
 ```
 
 ### 安装环境
 根据网络环境双击运行`01A.构建运行环境（默认源）.bat`或者`01B.构建运行环境（国内源）.bat`   
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
 或可以用如下命令手动创建：   
-```
-conda create -y -n ezvtb_rt_venv python=3.10
-conda activate ezvtb_rt_venv
-conda install -y nvidia/label/cuda-12.6.3::cuda-nvcc-dev_win-64
-conda install -y conda-forge::pycuda
-python -m pip install --upgrade pip wheel
-python -m pip install nvidia-cudnn-cu12
-pip install tensorrt_cu12_libs==10.6.0 tensorrt_cu12_bindings==10.6.0 tensorrt==10.6.0 --extra-index-url https://pypi.nvidia.com
+```cmd
+conda install -c nvidia/label/cuda-12.9.1 cuda-toolkit cudnn 
+pip install tensorrt_cu12_libs==10.11.0.33 tensorrt_cu12_bindings==10.11.0.33 tensorrt==10.11.0.33 --extra-index-url https://pypi.nvidia.com 
 python -m pip install -r requirements.txt --no-warn-script-location
 ```
 
@@ -122,8 +125,10 @@ python -m pip install -r requirements.txt --no-warn-script-location
 点击OK，依赖全亮即可  
 
 ### 检查环境模型，并构建TensorRT  
-在Conda环境中执行以下命令  
-`python ezvtb_rt_interface.py`  
+双击`02.构建TensorRT模型（N卡开启TensorRT使用）.bat`运行TRT构建，或者在conda环境中
+```
+python -c "from ezvtb_rt.trt_utils import check_build_all_models; check_build_all_models()"
+```  
 
 ### 运行启动器  
 在Conda环境中执行以下命令  

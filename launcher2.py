@@ -5,6 +5,7 @@ import subprocess
 import wx
 import json
 import sys
+EZVTB_DATA = os.environ.get('EZVTB_DATA', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'models'))
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 p = None
@@ -39,7 +40,6 @@ default_arg = {
     'is_alpha_clean': False,
     'is_eyebrow': False,
     'cache_simplify': 'High',
-    'cache_compression': 'High',
     'ram_cache_size': '2gb',
     'vram_cache_size': '2gb',
     'model_select': 'seperable_half',
@@ -67,7 +67,7 @@ characterList = []
 
 hasRTModel = False
 try:
-    f = open('data/models/tha3/standard/fp16/decomposer.trt')
+    f = open(os.path.join(EZVTB_DATA, 'tha3', 'standard', 'fp16', 'decomposer.trt'))
     f.close()
     hasRTModel = True
 except:
@@ -226,10 +226,10 @@ class LauncherPanel(wx.Panel):
         addOption('frame_rate_limit', title='FPS Limit', desc='选择帧率限制目标',
                   choices=['10', '15', '20', '30', '60'])
         addOption('preset', title='Performance Preset', desc='性能预设，注意修改后会覆盖后续配置',
-                  choices=['Low', 'Medium', 'High', 'Ultra', 'Custom'])
+                  choices=['Low', 'Medium', 'High', 'Ultra',  'Extreme', 'Custom'])
         addOption('model_select', title='Model Select', desc='选择使用的模型\nStandard Full精度较高性能较低',
-                  choices=['Seperable Half', 'Seperable Full', 'Standard Half', 'Standard Full'],
-                  mapping=['seperable_half', 'seperable_full', 'standard_half', 'standard_full'])
+                  choices=['Seperable Half', 'Seperable Full', 'Standard Half', 'Standard Full', 'V4 Half', 'V4 Full'],
+                  mapping=['seperable_half', 'seperable_full', 'standard_half', 'standard_full', 'v4_half', 'v4_full'])
         addOption('ram_cache_size', title='RAM Cache Size', desc='分配内存缓存大小\n用于存储最终运算结果',
                   choices=['Off', '1GB', '2GB', '4GB', '8GB', '16GB'],
                   mapping=['0b', '1gb', '2gb', '4gb', '8gb', '16gb'])
@@ -239,9 +239,6 @@ class LauncherPanel(wx.Panel):
         addOption('cache_simplify', title='Input Simplify',
                   desc='设置输入简化级别\n输入越简化，缓存命中率越高，动作越不平滑',
                   choices=['Off', 'Low', 'Medium', 'High', 'Higher', 'Highest', 'Gaming'])
-        addOption('cache_compression', title='JPEG Compression',
-                  desc='设置内存缓存压缩等级\n压缩等级越高，缓存命中率越高，输出质量越差',
-                  choices=['Off', 'Low', 'Medium', 'High'])
 
         addOption('sr', title='SuperResolution', desc='选择使用的超分模型\n由于性能原因，real-esrgan会进行裁切',
                   choices=['Off', 'anime4k_x2', 'waifu2x_x2_half', 'real-esrgan_x4_half', 'waifu2x_x2_full',
@@ -284,13 +281,13 @@ class LauncherPanel(wx.Panel):
                 self.optionDict['ram_cache_size'],
                 self.optionDict['vram_cache_size'],
                 self.optionDict['cache_simplify'],
-                self.optionDict['cache_compression'],
             ]
             presets = {
-                'Low': [0, 1, 1, 5, 3],
-                'Medium': [1, 1, 1, 4, 2],
-                'High': [1, 2, 2, 2, 2],
-                'Ultra': [3, 3, 3, 1, 1]
+                'Low': [0, 1, 1, 5],
+                'Medium': [1, 1, 1, 4],
+                'High': [1, 2, 2, 2],
+                'Ultra': [3, 3, 3, 2],
+                'Extreme': [4, 3, 3, 1],
             }
 
             if s == 'Custom':
@@ -299,7 +296,7 @@ class LauncherPanel(wx.Panel):
                 for c in presetControls: self.optionSizer.Hide(c)
             if s in presets:
                 opt = presets[s]
-                for i in range(5): presetControls[i].control.SetSelection(opt[i])
+                for i in range(4): presetControls[i].control.SetSelection(opt[i])
 
             self.frame.fSizer.Layout()
             self.frame.Fit()
@@ -384,8 +381,6 @@ class LauncherPanel(wx.Panel):
             if args['cache_simplify'] is not None:
                 run_args.append('--simplify')
                 run_args.append(str(cache_simplify_map[args['cache_simplify']]))
-                run_args.append('--cacher_quality')
-                run_args.append(str(cache_simplify_quality_map[args['cache_compression']]))
                 if args['cache_simplify'] != 'Off':
                     run_args.append('--use_cacher')
             if args['ram_cache_size'] is not None:
@@ -415,6 +410,9 @@ class LauncherPanel(wx.Panel):
                     run_args.append('--model_seperable')
                 if 'half' in args['model_select']:
                     run_args.append('--model_half')
+                if 'v4' in args['model_select']:
+                    run_args.append('--model_version')
+                    run_args.append('v4')
 
             if args['frame_rate_limit'] is not None:
                 run_args.append('--frame_rate_limit')

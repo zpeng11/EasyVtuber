@@ -10,8 +10,5 @@ pyanime4k==2.5.2
 pyvirtualcam==0.9.1
 pyopengl
 wxpython
-onnx 
-onnxruntime-directml 
-turbojpeg 
-tqdm
+git+https://github.com/zpeng11/ezvtuber-rt.git@tha4
 torch

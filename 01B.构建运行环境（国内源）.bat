@@ -1,5 +1,9 @@
 @echo on
 cd /D "%~dp0"
+IF "%FFMPEG_DIR%"=="" (
+    echo Error: FFMPEG_DIR environment variable is not set.
+    exit /b 1
+)
 
 WHERE conda
 IF %ERRORLEVEL% NEQ 0 (
@@ -24,16 +28,11 @@ IF EXIST %~dp0envs\miniconda3\Scripts SET PATH=%~dp0envs\miniconda3\Scripts;%PAT
 call activate
 call conda env list
 call conda update -y --all
-call conda create -y -n ezvtb_rt_venv python=3.10
-call conda activate ezvtb_rt_venv
+call conda create -y -n easyvtuber python=3.10
+call conda activate easyvtuber
 call conda env list
 
-call conda install -y nvidia/label/cuda-12.9.0::cuda-nvcc-dev_win-64
-call conda install -y pycuda -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ 
-
-call python -m pip install --upgrade pip wheel -i https://mirrors.aliyun.com/pypi/simple/
-echo yes|python -m pip install nvidia-cudnn-cu12 -i https://mirrors.aliyun.com/pypi/simple/
-
+call conda install -y nvidia/label/cuda-12.9.1::cuda-toolkit cudnn
 echo yes|pip install tensorrt_cu12_libs==10.11.0.33 tensorrt_cu12_bindings==10.11.0.33 tensorrt==10.11.0.33 --extra-index-url https://pypi.nvidia.com
 
 call python -m pip install -r requirements.txt --no-warn-script-location -i https://mirrors.aliyun.com/pypi/simple/

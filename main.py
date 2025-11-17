@@ -10,8 +10,9 @@ from PIL import Image
 import tha2.poser.modes.mode_20_wx
 from pose import get_pose
 from preprocess import resize_to_512_center, apply_color_curves
-from utils import preprocessing_image, postprocessing_image
-from ezvtb_rt_interface import get_core
+import ezvtb_rt
+from ezvtb_rt.common import Core
+from ezvtb_rt import CoreORT
 
 import errno
 import json
@@ -344,27 +345,35 @@ class ModelClientProcess(Process):
         self.gpu_fps_number = Value('f', 0.0)
         self.cache_hit_ratio = Value('f', 0.0)
         self.gpu_cache_hit_ratio = Value('f', 0.0)
-
+    
     def run(self):
-        self.model = get_core(device_id=args.device_id,
-                              use_tensorrt=args.use_tensorrt,
+        using_core_type: type = CoreORT
+        if args.use_tensorrt:
+            try:
+                from ezvtb_rt import CoreTRT
+                using_core_type = CoreTRT
+            except ImportError:
+                args.use_tensorrt = False
+                pass
+        self.model: Core = using_core_type(
+            tha_model_version =args.model_version,
+            tha_model_seperable = args.model_seperable,
+            tha_model_fp16 = args.model_half,
 
-                              model_seperable = args.model_seperable,
-                              model_half=args.model_half, 
-                              model_cache_size=args.max_gpu_cache_len, 
-                              model_use_eyebrow=args.eyebrow,
+            rife_model_enable = args.use_interpolation,
+            rife_model_scale = args.interpolation_scale,
+            rife_model_fp16 = args.interpolation_half,
 
-                              use_interpolation=args.use_interpolation,
-                              interpolation_scale=args.interpolation_scale,
-                              interpolation_half=args.interpolation_half,
+            sr_model_enable = args.use_sr,
+            sr_model_scale = 4 if args.sr_x4 else 2,
+            sr_model_noise = args.sr_noise,
+            sr_model_fp16 = args.sr_half,
 
-                              cacher_quality=args.cacher_quality,
-                              cacher_ram_size=args.max_cache_len,
+            vram_cache_size = args.max_gpu_cache_len,
+            cache_max_giga = args.max_cache_len,
 
-                              use_sr=args.use_sr,
-                              sr_half=args.sr_half,
-                              sr_x4=args.sr_x4,
-                              sr_noise=args.sr_noise)
+            use_eyebrow = args.eyebrow
+        )
         self.model.setImage(self.input_image)
         input_pose = np.zeros((1, 45), dtype=np.float32)
 
