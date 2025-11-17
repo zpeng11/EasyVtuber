@@ -5,7 +5,6 @@ import subprocess
 import wx
 import json
 import sys
-EZVTB_DATA = os.environ.get('EZVTB_DATA', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'models'))
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 p = None
@@ -67,7 +66,7 @@ characterList = []
 
 hasRTModel = False
 try:
-    f = open(os.path.join(EZVTB_DATA, 'tha3', 'standard', 'fp16', 'decomposer.trt'))
+    f = open(os.path.join(os.path.dirname(__file__), 'data', 'models', 'tha3', 'standard', 'fp16', 'decomposer.trt'))
     f.close()
     hasRTModel = True
 except:

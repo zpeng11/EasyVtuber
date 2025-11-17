@@ -13,6 +13,10 @@ from preprocess import resize_to_512_center, apply_color_curves
 import ezvtb_rt
 from ezvtb_rt.common import Core
 from ezvtb_rt import CoreORT
+from ezvtb_rt import rgba_utils
+from ezvtb_rt import init_model_path
+import os
+init_model_path(os.path.join(os.path.dirname(__file__), 'data', 'models'))
 
 import errno
 import json
@@ -939,11 +943,11 @@ def main():
         rm[0, 2] += dx + args.model_output_size / 2 - args.model_output_size / 2
         rm[1, 2] += dy + args.model_output_size / 2 - args.model_output_size / 2
 
-        postprocessed_image = cv2.warpAffine(
-            postprocessed_image,
-            rm,
-            (args.model_output_size, args.model_output_size))
-
+        if args.extend_movement or args.bongo:
+            postprocessed_image = cv2.warpAffine(
+                postprocessed_image,
+                rm,
+                (args.model_output_size, args.model_output_size))
         if args.perf == 'main':
             print("postprocess", (time.perf_counter() - tic) * 1000)
             tic = time.perf_counter()
@@ -951,24 +955,24 @@ def main():
         output_fps_number = output_fps()
 
         if args.anime4k:
-            alpha_channel = postprocessed_image[:, :, 3]
+            bgr_image, alpha_channel = rgba_utils.rgba_split(postprocessed_image) # Split alpha channel, signature for rgba but also works for bgra
             alpha_channel = cv2.resize(alpha_channel, None, fx=2, fy=2)
 
             # a.load_image_from_numpy(cv2.cvtColor(postprocessed_image, cv2.COLOR_RGBA2RGB), input_type=ac.AC_INPUT_RGB)
             # img = cv2.imread("character/test41.png")
-            img1 = cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2BGR)
             # a.load_image_from_numpy(img, input_type=ac.AC_INPUT_BGR)
-            a.load_image_from_numpy(img1, input_type=ac.AC_INPUT_BGR)
+            a.load_image_from_numpy(bgr_image, input_type=ac.AC_INPUT_BGR)
             a.process()
             postprocessed_image = a.save_image_to_numpy()
-            postprocessed_image = cv2.merge((postprocessed_image, alpha_channel))
+            postprocessed_image = rgba_utils.rgba_combine(postprocessed_image, alpha_channel)# Combine alpha channel, signature for rgba but also works for bgra
             if args.perf == 'main':
                 print("anime4k", (time.perf_counter() - tic) * 1000)
                 tic = time.perf_counter()
         if args.alpha_split:
+            bgr_image, alpha_channel = rgba_utils.rgba_split(postprocessed_image) # Split alpha channel, signature for rgba but also works for bgra
             alpha_image = cv2.merge(
-                [postprocessed_image[:, :, 3], postprocessed_image[:, :, 3], postprocessed_image[:, :, 3]])
-            alpha_image = cv2.cvtColor(alpha_image, cv2.COLOR_BGR2BGRA)
+                [alpha_channel, alpha_channel, alpha_channel])
+            alpha_image = rgba_utils.rgba_combine(alpha_image, np.zeros_like(alpha_channel))
             postprocessed_image = cv2.hconcat([postprocessed_image, alpha_image])
 
         if args.debug:
@@ -1007,7 +1011,7 @@ def main():
             #     cv2.cvtColor(postprocessing_image(output_image.cpu()), cv2.COLOR_RGBA2RGB), (512, 512))
             result_image = postprocessed_image
             if args.output_webcam == 'spout':
-                sender.send_image(cv2.cvtColor(postprocessed_image, cv2.COLOR_BGRA2RGBA), False)
+                sender.send_image(rgba_utils.bgra_to_rgba(postprocessed_image), False)
                 time.sleep(0.000001)
             else:
                 if args.output_webcam == 'obs':

@@ -1,9 +1,5 @@
 @echo on
 cd /D "%~dp0"
-IF "%FFMPEG_DIR%"=="" (
-    echo Error: FFMPEG_DIR environment variable is not set.
-    exit /b 1
-)
 
 WHERE conda
 IF %ERRORLEVEL% NEQ 0 (
@@ -32,7 +28,7 @@ call conda create -y -n easyvtuber python=3.10
 call conda activate easyvtuber
 call conda env list
 
-call conda install -y nvidia/label/cuda-12.9.1::cuda-toolkit cudnn
+call conda install -y -c nvidia/label/cuda-12.9.1 cuda-toolkit cudnn
 echo yes|pip install tensorrt_cu12_libs==10.11.0.33 tensorrt_cu12_bindings==10.11.0.33 tensorrt==10.11.0.33 --extra-index-url https://pypi.nvidia.com
 
 call python -m pip install -r requirements.txt --no-warn-script-location

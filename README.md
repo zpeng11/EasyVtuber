@@ -110,7 +110,7 @@ C:\Users\Eleven> set FFMPEG_DIR=C:\Dir\To\FFmpeg
 这两个脚本会构建名为`ezvtb_rt_venv`的conda环境  
 或可以用如下命令手动创建：   
 ```cmd
-conda install -c nvidia/label/cuda-12.9.1 cuda-toolkit cudnn 
+conda install -y -c nvidia/label/cuda-12.9.1 cuda-toolkit cudnn 
 pip install tensorrt_cu12_libs==10.11.0.33 tensorrt_cu12_bindings==10.11.0.33 tensorrt==10.11.0.33 --extra-index-url https://pypi.nvidia.com 
 python -m pip install -r requirements.txt --no-warn-script-location
 ```
