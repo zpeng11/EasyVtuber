@@ -38,7 +38,8 @@ def main():
 
     print("Character Image Loaded:", args.character)
 
-    pose_position_shm = shared_memory.SharedMemory(create=True, size=(45 + 4) * 4)  # 45 floats for pose, 4 floats for position
+    pose_position_shm = shared_memory.SharedMemory(create=True,
+                                                   size=(45 + 4) * 4)  # 45 floats for pose, 4 floats for position
     input_process = None
 
     if args.cam_input:
@@ -73,37 +74,59 @@ def main():
     ]
     np_ret_shms = [
         np.ndarray((args.model_output_size, cam_width_scale * args.model_output_size, ret_channels), dtype=np.uint8,
-                    buffer=infer_process.ret_shared_mem.buf[i * cam_width_scale * args.model_output_size * args.model_output_size * ret_channels:
-                                                    (i + 1) * cam_width_scale * args.model_output_size * args.model_output_size * ret_channels])
+                   buffer=infer_process.ret_shared_mem.buf[
+                       i * cam_width_scale * args.model_output_size * args.model_output_size * ret_channels:
+                       (i + 1) * cam_width_scale * args.model_output_size * args.model_output_size * ret_channels])
         for i in range(args.interpolation_scale)
     ]
 
-    last_time : float = time.perf_counter()
-    interval : float = 1.0 / args.frame_rate_limit if args.frame_rate_limit > 0 else 0.0
-    
+    last_time: float = time.perf_counter()
+    interval: float = 1.0 / args.frame_rate_limit if args.frame_rate_limit > 0 else 0.0
+
     if args.output_virtual_cam:
         virtual_cam = pyvirtualcam.Camera(width=cam_width_scale * args.model_output_size,
-                                    height=args.model_output_size,
-                                    fps=args.frame_rate_limit,
-                                    backend='obs',
-                                    fmt=pyvirtualcam.PixelFormat.RGB)
+                                          height=args.model_output_size,
+                                          fps=args.frame_rate_limit,
+                                          backend='obs',
+                                          fmt=pyvirtualcam.PixelFormat.RGB)
         print(f'Using virtual camera: {virtual_cam.device}')
     elif args.output_spout2:
         from PySpout import SpoutSender
         spout_sender = SpoutSender("EasyVtuber", cam_width_scale * args.model_output_size,
-                                 args.model_output_size, GL_RGBA)
+                                   args.model_output_size, GL_RGBA)
     else:
         print("Using OpenCV windows for output display.")
 
     pipeline_fps = FPS()
-    
+    last_frame_time = None  # 上一帧输出时间，用于打印帧时间差
+    last_batch_start_time = None  # 上一批就绪时间，用于周期估计
+    n_frames = args.interpolation_scale
+    min_period = n_frames * interval if interval > 0 else n_frames / 60.0  # 60fps 下本批最少占用时间
+    default_period = 1.0 / 15.0  # 约 15fps 推理时的周期，首包无历史时使用
+
     print("Interval set to {:.3f} seconds".format(interval))
     while True:
         infer_process.finish_event.wait()
         infer_process.finish_event.clear()
-        for i in range(args.interpolation_scale):
+        for i in range(n_frames):
             ret_batch_shm_channels[i].acquire()
-        for i in range(args.interpolation_scale):
+
+        # 动态周期：本批就绪与上一批就绪的时间间隔，用于本批内均匀排期
+        batch_start_time = time.perf_counter()
+        if last_batch_start_time is not None:
+            observed_period = batch_start_time - last_batch_start_time
+            period = max(min_period, min(observed_period, 1.0))
+        else:
+            period = max(min_period, default_period)
+        last_batch_start_time = batch_start_time
+
+        for i in range(n_frames):
+            # 均匀排期 + frame_rate_limit：取两者中较晚的时间发送
+            target_send_time = batch_start_time + i * (period / n_frames)
+            if interval > 0:
+                target_send_time = max(target_send_time, last_time)
+            wait_until(target_send_time)
+
             if args.output_virtual_cam:
                 virtual_cam.send(np_ret_shms[i])
             elif args.output_spout2:
@@ -111,18 +134,26 @@ def main():
             else:
                 cv2.imshow("EasyVtuber Debug Frame", np_ret_shms[i])
                 cv2.waitKey(1)
-            
-            wait_until(last_time + interval)
-            last_time += interval
+            now_send = time.perf_counter()
+            last_frame_time = now_send
+            # 限速：下一帧最早在 last_time + interval，若已落后于当前时间则对齐到 now
+            if interval > 0:
+                last_time += interval
+                if last_time < now_send:
+                    last_time = now_send
             ret_batch_shm_channels[i].release()
-        print("Infer Process FPS: {:.2f}, Input FPS: {:.2f}, Model Avg Interval: {:.2f} ms, Cache Hit Ratio: {:.2f}%, GPU Cache Hit Ratio: {:.2f}%, Output Pipeline FPS {:.5f}".format(
-            infer_process.pipeline_fps_number.value,
-            input_fps.value,
-            infer_process.average_model_interval.value * 1000,
-            infer_process.cache_hit_ratio.value * 100,
-            infer_process.gpu_cache_hit_ratio.value * 100,
-            pipeline_fps() * args.interpolation_scale
-        ), end ='\r', flush=True)
+        output_pipeline_fps_val = pipeline_fps() * args.interpolation_scale
+        infer_process.output_pipeline_fps.value = output_pipeline_fps_val
+        print(
+            "Infer Process FPS: {:.2f}, Input FPS: {:.2f}, Model Avg Interval: {:.2f} ms, Cache Hit Ratio: {:.2f}%, GPU Cache Hit Ratio: {:.2f}%, Output Pipeline FPS {:.5f}".format(
+                infer_process.pipeline_fps_number.value,
+                input_fps.value,
+                infer_process.average_model_interval.value * 1000,
+                infer_process.cache_hit_ratio.value * 100,
+                infer_process.gpu_cache_hit_ratio.value * 100,
+                output_pipeline_fps_val
+            ), end='\r', flush=True)
+
 
 if __name__ == "__main__":
     main()

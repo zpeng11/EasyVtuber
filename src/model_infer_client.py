@@ -1,4 +1,5 @@
 import math
+import os
 from multiprocessing import Process, Value, shared_memory, Event
 import cv2
 import numpy as np
@@ -27,11 +28,15 @@ class ModelClientProcess(Process):
         self.cache_hit_ratio = Value('f', 0.0)
         self.gpu_cache_hit_ratio = Value('f', 0.0)
         self.pipeline_fps_number = Value('f', 0.0)
+        self.output_pipeline_fps = Value('f', 0.0)  # 由 main 进程更新，与 main print 一致
         self.input_fps = input_fps
 
         self.finish_event = Event()
 
     def run(self):
+        # 插值帧红点标记：由 --mark_interpolated 控制，供 ezvtb_rt 读取
+        if getattr(args, 'mark_interpolated', False):
+            os.environ['EZVTB_MARK_INTERPOLATED'] = '1'
         pose_position_shm_guard = SharedMemoryGuard(self.pose_position_shm, ctrl_name="pose_position_shm_ctrl")
         np_pose_shm = np.ndarray((45,), dtype=np.float32, buffer=self.pose_position_shm.buf[:45 * 4])
         np_position_shm = np.ndarray((4,), dtype=np.float32, buffer=self.pose_position_shm.buf[45 * 4:45 * 4 + 4 * 4])
@@ -147,24 +152,22 @@ class ModelClientProcess(Process):
                 (bgra_image.shape[1], bgra_image.shape[0]))
 
             if args.output_debug:
-                cv2.putText(bgra_image, str('OUT_FPS:%.1f' % (self.pipeline_fps_number.value * args.interpolation_scale)), (0, 16), cv2.FONT_HERSHEY_PLAIN, 1,
-                            (0, 255, 0), 1)
-                cv2.putText(bgra_image, str(
-                    'GPU_FPS:%.1f' % (
-                        1.0 / (self.average_model_interval.value + 1e-6) if not args.use_interpolation else 1.0 / (self.average_model_interval.value + 1e-6) * args.interpolation_scale)),
-                            (0, 32),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-                cv2.putText(bgra_image, str('INPUT_FPS:%.1f' % self.input_fps.value), (0, 48),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                # 与 main.py 输出格式一致
+                y = 16
+                cv2.putText(bgra_image, 'INFER/S: {:.4f}'.format(self.pipeline_fps_number.value), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                y += 16
+                cv2.putText(bgra_image, 'INPUT/S: {:.4f}'.format(self.input_fps.value), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                y += 16
+                cv2.putText(bgra_image, 'OUTPUT/S: {:.4f}'.format(self.output_pipeline_fps.value), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                y += 16
+                cv2.putText(bgra_image, 'CALC: {:.2f} ms'.format(self.average_model_interval.value * 1000), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                y += 16
                 if args.max_ram_cache_len > 0:
-                    cv2.putText(bgra_image, str('MEMCACHED:%.1f%%' % (self.cache_hit_ratio.value * 100)),
-                                (0, 64),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-                if args.max_gpu_cache_len > 0.0:
-                    cv2.putText(bgra_image, str('GPUCACHED:%.1f%%' % (self.gpu_cache_hit_ratio.value * 100)),
-                                (0, 80),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-
+                    cv2.putText(bgra_image, 'MEM CACHE: {:.2f}%'.format(self.cache_hit_ratio.value * 100), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                    y += 16
+                if args.max_gpu_cache_len > 0:
+                    cv2.putText(bgra_image, 'GPU CACHE: {:.2f}%'.format(self.gpu_cache_hit_ratio.value * 100), (0, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                
             if args.alpha_split:
                 rgba_image = cv2.cvtColor(bgra_image, cv2.COLOR_BGRA2RGBA)
                 alpha_channel = rgba_image[:, :, 3]

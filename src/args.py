@@ -51,6 +51,7 @@ parser.add_argument('--eyebrow', action='store_true')
 parser.add_argument('--use_interpolation', action='store_true')
 parser.add_argument('--interpolation_scale', type=int, default=1)
 parser.add_argument('--interpolation_half', action='store_true')
+parser.add_argument('--mark_interpolated', action='store_true', help='在插值帧左上角打红点便于确认补帧输出')
 
 parser.add_argument('--use_sr', action='store_true')
 parser.add_argument('--sr_x4', action='store_true')
